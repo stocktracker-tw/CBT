@@ -75,6 +75,9 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
 .top.scrolled{background:var(--glass-strong);
   backdrop-filter:blur(24px) saturate(1.6); -webkit-backdrop-filter:blur(24px) saturate(1.6);
   box-shadow:0 1px 0 var(--glass-brd), 0 14px 34px -22px rgba(0,0,0,.55)}
+.brand-row{display:flex; align-items:center; gap:10px; min-width:0}
+.logo{width:38px; height:38px; border-radius:11px; display:block; flex:0 0 auto;
+  box-shadow:0 4px 14px -6px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14)}
 .brand{font-size:20px; font-weight:700; letter-spacing:.06em}
 .brand small{display:block; font-size:11px; font-weight:500; color:var(--ink2); letter-spacing:.18em; margin-top:1px}
 .streak-chip{display:flex; align-items:center; gap:6px; background:var(--glass);
@@ -325,7 +328,10 @@ details.acc .acc-body{padding:0 16px 14px}
 
 <div id="app">
   <header class="top">
-    <div class="brand">心晴<small>MINDRISE · CBT 每日練習</small></div>
+    <div class="brand-row">
+      <img class="logo" id="brandLogo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Mindrise">
+      <div class="brand">心晴<small>MINDRISE · CBT 每日練習</small></div>
+    </div>
     <div class="streak-chip" id="streakBadge"><span class="dot"></span><span id="streakText">開始第一天</span></div>
   </header>
   <main>
@@ -1509,6 +1515,11 @@ applyTheme();
 updateStreakBadge();
 renderers.today();
 updateTabLens();
+(function () {
+  const logoEl = document.getElementById('brandLogo');
+  const iconLink = document.querySelector('link[rel="apple-touch-icon"]');
+  if (logoEl && iconLink) logoEl.src = iconLink.href;
+})();
 
 </script>
 </body>
