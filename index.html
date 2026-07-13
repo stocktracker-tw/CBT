@@ -138,8 +138,6 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
   overflow:hidden;
   transition:color .15s, flex-basis .32s ease, min-width .32s ease, padding .32s ease, opacity .22s ease;
   position:relative; z-index:1}
-.tabbar.mini .tab:not(.on){flex-basis:0; min-width:0; padding-left:0; padding-right:0; opacity:0; pointer-events:none}
-.tabbar.mini .lens{opacity:0}
 .tab svg{width:25px; height:25px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
 .tab.on{color:var(--accent); font-weight:700}
 .tab.near{color:var(--accent)}
@@ -573,7 +571,6 @@ function show(view) {
   updateTabLens();
   renderers[view]();
   window.scrollTo(0, 0);
-  setMini(false);
 }
 $$('.tab').forEach(t => t.addEventListener('click', () => show(t.dataset.v)));
 
@@ -620,7 +617,6 @@ window.addEventListener('resize', updateTabLens);
   }
   tabbarEl.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (tabbarEl.classList.contains('mini')) return;
     pressing = true; dragging = false;
     lastX = e.clientX; lastT = performance.now();
   });
@@ -656,26 +652,14 @@ window.addEventListener('resize', updateTabLens);
     }
   });
   tabbarEl.addEventListener('click', e => {
-    if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); return; }
-    if (tabbarEl.classList.contains('mini')) { e.preventDefault(); e.stopPropagation(); setMini(false); }
+    if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); }
   }, true);
 })();
 
-/* ================= scroll behaviors (Stocks-style) ================= */
+/* ================= scroll behaviors ================= */
 const topBarEl = document.querySelector('.top');
-function setMini(v) {
-  if (tabbarEl.classList.contains('mini') === !!v) return;
-  tabbarEl.classList.toggle('mini', !!v);
-  if (!v) setTimeout(updateTabLens, 340);
-}
-let lastScrollY = 0;
 window.addEventListener('scroll', () => {
-  const sy = window.scrollY;
-  topBarEl.classList.toggle('scrolled', sy > 6);
-  const dy = sy - lastScrollY;
-  if (sy > 120 && dy > 6) setMini(true);
-  else if (dy < -6 || sy < 60) setMini(false);
-  lastScrollY = sy;
+  topBarEl.classList.toggle('scrolled', window.scrollY > 6);
 }, { passive: true });
 
 /* ================= slider helper ================= */
