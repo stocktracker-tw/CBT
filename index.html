@@ -331,7 +331,6 @@ details.acc .acc-body{padding:0 16px 14px}
     <section id="view-tools" class="view"></section>
     <section id="view-history" class="view"></section>
     <section id="view-learn" class="view"></section>
-    <section id="view-care" class="view"></section>
   </main>
 </div>
 
@@ -342,7 +341,6 @@ details.acc .acc-body{padding:0 16px 14px}
     <button class="tab" data-v="tools"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4z"/><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>工具</button>
     <button class="tab" data-v="history"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M4.5 16l4-5 3.5 2.5 4.5-6 3 3.5"/></svg>紀錄</button>
     <button class="tab" data-v="learn"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15.5H6.5A2.5 2.5 0 004 21z"/><path d="M4 18.5A2.5 2.5 0 016.5 16H20"/></svg>學習</button>
-    <button class="tab" data-v="care"><svg viewBox="0 0 24 24"><path d="M12 20.5S3.5 15.5 3.5 9.3C3.5 6.4 5.7 4.5 8 4.5c1.7 0 3.2.9 4 2.3.8-1.4 2.3-2.3 4-2.3 2.3 0 4.5 1.9 4.5 4.8 0 6.2-8.5 11.2-8.5 11.2z"/></svg>資源</button>
   </div>
 </nav>
 
@@ -688,9 +686,7 @@ renderers.today = function renderToday() {
   let html = '<h1 class="page-title">' + greet + '</h1>' +
     '<p class="page-sub">' + fmtDate(tk, true) + ' · 每天 5–10 分鐘，小步慢走就好</p>';
 
-  if (!storageOk) html += '<div class="notice">⚠ 此瀏覽器目前無法保存資料（可能是隱私模式）。練習仍可進行，但關閉頁面後紀錄會消失，建議先到「資源」頁匯出備份。</div>';
-
-  html += '<div class="sos-band">現在很難受、撐不住嗎？<button id="sos-go">求助資源在這裡</button></div>';
+  if (!storageOk) html += '<div class="notice">⚠ 此瀏覽器目前無法保存資料（可能是隱私模式）。練習仍可進行，但關閉頁面後紀錄會消失。</div>';
 
   /* --- check-in --- */
   const ci = D.checkins[tk];
@@ -757,7 +753,6 @@ renderers.today = function renderToday() {
   v.innerHTML = html;
 
   /* --- bindings --- */
-  $('#sos-go').addEventListener('click', () => show('care'));
   if (!ci || editingCheckin) {
     bindSlider(v, 'ci-mood'); bindSlider(v, 'ci-sleep');
     $('#ci-save').addEventListener('click', () => {
@@ -817,7 +812,7 @@ function renderOnboarding(v) {
     '<hr class="divider">' +
     '<p class="body-text">每天只需要 <b>5–10 分鐘</b>：簽到一下心情，讀一則小課程，做一個小練習。28 天的課程會一週一個主題，陪你把技巧一個一個練起來。中斷了也沒關係，課程會在你回來的那天等你。</p></div>' +
     '<div class="card"><h2>開始前，三件小事</h2>' +
-    '<p class="body-text">1. 這是自助練習工具，<b>不能取代</b>醫師或心理師的診斷與治療。<br>2. 你的紀錄只存在<b>這個裝置的瀏覽器</b>裡，不會上傳到任何地方。<br>3. 如果出現想傷害自己的念頭，請不要獨自面對——「資源」頁有 24 小時求助專線，打過去，那件事不需要等。</p>' +
+    '<p class="body-text">1. 這是自助練習工具，<b>不能取代</b>醫師或心理師的診斷與治療。<br>2. 你的紀錄只存在<b>這個裝置的瀏覽器</b>裡，不會上傳到任何地方。<br>3. 如果出現想傷害自己的念頭，請不要獨自面對——24 小時安心專線 <b>1925</b>，打過去，那件事不需要等。</p>' +
     '<button class="btn block" id="ob-start" style="margin-top:12px">我了解了，開始吧</button></div>';
   $('#ob-start').addEventListener('click', () => {
     D.onboarded = true; save(); renderers.today();
@@ -858,22 +853,15 @@ function openAssessment() {
     const items = wc.items;
     let phq = 0, gad = 0;
     items.forEach((it, i) => { if (it.scale_type === 'phq') phq += answers[i]; else gad += answers[i]; });
-    const prev = D.assessments[0];
     D.assessments.unshift({ id: uid(), date: todayKey(), answers: answers.slice(), phq: phq, gad: gad });
     save();
-    const flag = phq >= 3 || gad >= 3;
-    const twoWeeks = flag && prev && (prev.phq >= 3 || prev.gad >= 3);
     openModal('<h2>本週結果</h2>' +
       '<div class="stat-tiles" style="grid-template-columns:1fr 1fr">' +
       '<div class="stat-tile"><div class="n">' + phq + '<span class="mut">／6</span></div><div class="l">情緒（PHQ-2）</div></div>' +
       '<div class="stat-tile"><div class="n">' + gad + '<span class="mut">／6</span></div><div class="l">焦慮（GAD-2）</div></div></div>' +
       '<p class="body-text" style="font-size:13.5px;color:var(--ink2)">' + esc(wc.scoring_note) + '</p>' +
-      (flag ? '<div class="sos-band" style="margin-top:14px">' +
-        (twoWeeks ? '已經連續兩週分數偏高——這正是求助警訊之一，找專業人員聊聊會是很值得的一步。' : '這週辛苦了。求助資源整理在「資源」頁，找個人聊聊吧。') +
-        '<button id="as-care">前往</button></div>' : '') +
       '<button class="btn block ghost" id="as-close" style="margin-top:12px">好的</button>');
     const c = $('#modal-root');
-    const go = c.querySelector('#as-care'); if (go) go.addEventListener('click', () => { closeModal(); show('care'); });
     c.querySelector('#as-close').addEventListener('click', () => { closeModal(); if (currentView === 'today') renderers.today(); else renderers[currentView](); });
   });
 }
@@ -1417,75 +1405,6 @@ renderers.learn = function () {
     openModal('<h2>' + esc(e.name) + '</h2><p class="sub">' + esc(e.intro) + '</p>' +
       e.steps.map((s, i) => '<div class="item-row"><span class="badge g" style="margin-top:3px">' + (i + 1) + '</span><div class="grow" style="font-size:14px">' + esc(s) + '</div></div>').join(''));
   }));
-};
-
-/* ================= CARE view ================= */
-renderers.care = function () {
-  const v = $('#view-care');
-  const S = CONTENT.safety;
-  let html = '<h1 class="page-title">資源</h1><p class="page-sub">求助不是失敗，是照顧自己的方法</p>';
-
-  html += '<div class="card"><h2>24 小時內找得到人</h2><p class="sub">難受到撐不住、或出現傷害自己的念頭時，直接打：</p>' +
-    S.crisis_resources.map(c =>
-      '<div class="crisis-line"><div style="min-width:0;flex:1"><div style="font-weight:600;font-size:14px"><span class="badge v" style="margin-right:6px">' + esc(c.region) + '</span>' + esc(c.name) + '</div>' +
-      '<div class="mut" style="margin-top:2px">' + esc(c.note) + '</div></div>' +
-      '<div class="num">' + esc(c.contact) + '</div></div>').join('') + '</div>';
-
-  html += '<div class="card"><h2>什麼時候該找專業協助？</h2>' +
-    S.seek_help_signs.map(s => '<div class="item-row"><span style="color:var(--danger);margin-top:1px">●</span><div class="grow" style="font-size:13.5px;color:var(--ink2)">' + esc(s) + '</div></div>').join('') + '</div>';
-
-  html += '<div class="card"><h2>關於這個工具</h2><p class="body-text" style="font-size:13.5px;color:var(--ink2)">' + esc(S.disclaimer) + '</p>' +
-    '<p class="mut" style="margin-top:8px">方法依據：認知行為治療（CBT）、失眠認知行為治療（CBT-I）、行為活化。所有紀錄只存在此裝置的瀏覽器中。</p></div>';
-
-  html += '<div class="card"><h2>把心晴放到主畫面</h2>' +
-    '<p class="body-text" style="font-size:13.5px;color:var(--ink2)">加入後會有自己的日昇 icon，點開就像 App 一樣全螢幕，不用每次打網址。</p>' +
-    '<div class="item-row"><span class="badge v" style="margin-top:3px">iPhone</span><div class="grow" style="font-size:13.5px;color:var(--ink2)">用 Safari 開啟本頁 → 點下方「分享」→ 選「加入主畫面」。</div></div>' +
-    '<div class="item-row"><span class="badge v" style="margin-top:3px">Android</span><div class="grow" style="font-size:13.5px;color:var(--ink2)">用 Chrome 開啟本頁 → 右上「⋮」選單 → 「加到主畫面」。</div></div>' +
-    '<p class="mut" style="margin-top:8px">提醒：目前的線上網址屬於你的帳號，開啟時需保持登入。想要完全免登入的網址，可在 Artifact 頁面右上的分享選單建立公開連結，再用那個連結加入主畫面。紀錄存在各瀏覽器本地，換網址開啟時記得先匯出、再匯入備份。</p></div>';
-
-  html += '<div class="card"><h2>設定與資料</h2>' +
-    '<p class="week-label" style="margin-top:2px">備份</p><p class="mut" style="margin:0 0 8px">紀錄只存在這個瀏覽器，建議每週匯出一次。</p>' +
-    '<div class="step-nav" style="margin-top:4px"><button class="btn ghost" id="dt-export">匯出備份</button><button class="btn ghost" id="dt-import">匯入備份</button></div>' +
-    '<input type="file" id="dt-file" accept=".json,application/json" style="display:none">' +
-    '<hr class="divider"><button class="btn danger block" id="dt-clear">清除全部資料</button></div>';
-
-  v.innerHTML = html;
-
-  $('#dt-export').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ app: 'xinqing-cbt', exportedAt: new Date().toISOString(), data: D }, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = '心晴備份-' + todayKey().replace(/-/g, '') + '.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast('已匯出備份檔');
-  });
-  $('#dt-import').addEventListener('click', () => $('#dt-file').click());
-  $('#dt-file').addEventListener('change', e => {
-    const f = e.target.files[0]; if (!f) return;
-    const rd = new FileReader();
-    rd.onload = () => {
-      try {
-        const obj = JSON.parse(rd.result);
-        const data = obj && obj.app === 'xinqing-cbt' && obj.data ? obj.data : obj;
-        if (!data || typeof data !== 'object' || !data.program) { toast('這不是心晴的備份檔'); return; }
-        openConfirm('匯入備份？', '將以備份內容取代目前這個瀏覽器裡的所有紀錄。', '匯入', () => {
-          D = sanitizeData(data);
-          save(); applyTheme(); updateStreakBadge(); renderers.care();
-          toast('備份已匯入');
-        });
-      } catch (err) { toast('讀取失敗：檔案格式不正確'); }
-    };
-    rd.readAsText(f);
-    e.target.value = '';
-  });
-  $('#dt-clear').addEventListener('click', () => {
-    openConfirm('清除全部資料？', '所有簽到、思考紀錄、課程進度將永久刪除，無法復原。建議先匯出備份。', '確定清除', () => {
-      D = DEFAULT_DATA();
-      save(); applyTheme(); updateStreakBadge(); show('today');
-      toast('已清除，隨時可以重新開始');
-    }, true);
-  });
 };
 
 /* ================= init ================= */
