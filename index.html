@@ -155,7 +155,9 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
   position:relative; z-index:1}
 .tab svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
 .tab.on{color:var(--accent); font-weight:700}
-.tab.near{color:var(--accent)}
+.tab.near{color:var(--accent); font-weight:700}
+/* 拖曳中：高亮跟著膠囊走——膠囊滑到誰身上誰亮，原本選取那顆退回灰 */
+.tabbar.dragging .tab.on:not(.near){color:var(--muted); font-weight:400}
 .tab:hover{color:var(--ink2)}
 .tab.on:hover{color:var(--accent)}
 /* 膠囊＝更厚的一片玻璃浮在 bar 裡：降低不透明度（原 .92 像實心色塊，與周圍玻璃
@@ -625,6 +627,7 @@ window.addEventListener('resize', updateTabLens);
     if (!dragging && Math.abs(e.clientX - lastX) > 6) {
       dragging = true;
       tabLens.classList.add('drag');
+      tabbarEl.classList.add('dragging');
       try { tabbarEl.setPointerCapture(e.pointerId); } catch (err) { }
     }
     if (dragging) moveLens(e.clientX);
@@ -633,6 +636,7 @@ window.addEventListener('resize', updateTabLens);
     if (dragging) {
       const nb = nearestTab(e.clientX);
       tabLens.classList.remove('drag');
+      tabbarEl.classList.remove('dragging');
       clearNear();
       suppressClick = true;
       if (nb && nb.dataset.v !== currentView) show(nb.dataset.v);
@@ -645,6 +649,7 @@ window.addEventListener('resize', updateTabLens);
     if (dragging) {
       dragging = false;
       tabLens.classList.remove('drag');
+      tabbarEl.classList.remove('dragging');
       clearNear();
       updateTabLens();
     }
