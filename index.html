@@ -153,7 +153,7 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
   overflow:hidden;
   transition:color .15s;
   position:relative; z-index:1}
-.tab svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+.tab svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .tab.on{color:var(--accent); font-weight:700}
 .tab.near{color:var(--accent); font-weight:700}
 /* 拖曳中：高亮跟著膠囊走——膠囊滑到誰身上誰亮，原本選取那顆退回灰 */
@@ -371,9 +371,9 @@ details.acc .acc-body{padding:0 16px 14px}
 <nav class="tabbar" aria-label="主選單">
   <div class="inner">
     <span class="lens" id="tabLens" aria-hidden="true"></span>
-    <button class="tab on" data-v="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3L19 19M19 5l-1.7 1.7M6.7 17.3L5 19"/></svg>今日</button>
+    <button class="tab on" data-v="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3.3v2.2M12 18.5v2.2M3.3 12h2.2M18.5 12h2.2M5.9 5.9l1.6 1.6M16.5 16.5l1.6 1.6M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6"/></svg>今日</button>
     <button class="tab" data-v="tools"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.9"/><path d="M6 6l3.2 3.2M18 6l-3.2 3.2M6 18l3.2-3.2M18 18l-3.2-3.2"/></svg>工具</button>
-    <button class="tab" data-v="history"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M4.5 16l4-5 3.5 2.5 4.5-6 3 3.5"/></svg>紀錄</button>
+    <button class="tab" data-v="history"><svg viewBox="0 0 24 24"><path d="M3.5 19.5h17"/><path d="M4.5 15l4-5.5 3.5 2.7 4.5-6.7 3 3.8"/></svg>紀錄</button>
     <button class="tab" data-v="learn"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15.5H6.5A2.5 2.5 0 004 21z"/><path d="M4 18.5A2.5 2.5 0 016.5 16H20"/></svg>學習</button>
   </div>
 </nav>
