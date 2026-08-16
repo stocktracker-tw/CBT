@@ -372,7 +372,7 @@ details.acc .acc-body{padding:0 16px 14px}
   <div class="inner">
     <span class="lens" id="tabLens" aria-hidden="true"></span>
     <button class="tab on" data-v="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3L19 19M19 5l-1.7 1.7M6.7 17.3L5 19"/></svg>今日</button>
-    <button class="tab" data-v="tools"><svg viewBox="0 0 24 24"><path d="M17.6 5.4a4.6 4.6 0 0 0-6 6L6 17v2h2l5.6-5.6a4.6 4.6 0 0 0 6-6l-2.7 2.7-2.4-.6-.6-2.4z"/></svg>工具</button>
+    <button class="tab" data-v="tools"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.9"/><path d="M6 6l3.2 3.2M18 6l-3.2 3.2M6 18l3.2-3.2M18 18l-3.2-3.2"/></svg>工具</button>
     <button class="tab" data-v="history"><svg viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M4.5 16l4-5 3.5 2.5 4.5-6 3 3.5"/></svg>紀錄</button>
     <button class="tab" data-v="learn"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15.5H6.5A2.5 2.5 0 004 21z"/><path d="M4 18.5A2.5 2.5 0 016.5 16H20"/></svg>學習</button>
   </div>
@@ -822,9 +822,9 @@ function toolTile(key, title, desc) {
   const night = key === 'braindump' || key === 'cantsleep';
   const icons = {
     breath: '<path d="M3 8h9a3 3 0 100-5"/><path d="M3 12h14a3 3 0 110 6"/><path d="M3 16h6a2.5 2.5 0 11-1 4.8"/>',
-    thought: '<path d="M4 17.5L15.5 6a2.1 2.1 0 013 3L7 20.5l-4 1z"/><path d="M13.5 8l3 3"/>',
+    thought: '<path d="M19.5 12.6v5.1a2 2 0 0 1-2 2H6.3a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h5.1"/><path d="M16.3 3.9l3.6 3.6-6.9 6.9-4.3.7.7-4.3z"/>',
     worry: '<path d="M8 4h13M8 12h13M8 20h13"/><circle cx="3.6" cy="4" r="1.4"/><circle cx="3.6" cy="12" r="1.4"/><circle cx="3.6" cy="20" r="1.4"/>',
-    activate: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.5 1.5M16.9 16.9l1.4 1.4M18.4 5.6l-1.5 1.5M7.1 16.9l-1.4 1.4"/>',
+    activate: '<circle cx="13.6" cy="4.6" r="1.9"/><path d="M12.9 8.1l-1.7 4.4 2.7 2.3.7 4.7"/><path d="M11.2 12.5l-2.6 2.9-.9 3.7"/><path d="M13.3 9.6l3.2 1.8"/>',
     braindump: '<path d="M20.5 14A8.5 8.5 0 1110 3.5a7 7 0 0010.5 10.5z"/>',
     cantsleep: '<path d="M6 8h6l-6 8h6"/><path d="M15 3h5l-5 6h5"/>',
     fivemin: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2M9.5 2.5h5"/>',
