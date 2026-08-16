@@ -41,6 +41,7 @@
   --orb-hi:rgba(255,255,255,.20);
   --tip-solid:rgba(28,20,32,.96);
   --lens:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.06)),linear-gradient(rgba(78,62,88,.55),rgba(78,62,88,.55));
+  --lens-drag:radial-gradient(closest-side,rgba(255,255,255,0) 58%,rgba(255,255,255,.10) 82%,rgba(255,255,255,.26) 100%);
   --shadow:0 18px 48px -18px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(255,255,255,.03);
   --radius:24px;
   --grid-line:rgba(255,255,255,.06); --axis:rgba(255,255,255,.18);
@@ -170,7 +171,16 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
     inset 0 -1px 2px -1px rgba(0,0,0,.35),
     0 2px 8px -3px rgba(0,0,0,.4);
   transition:left .38s cubic-bezier(.2,1.4,.3,1), width .3s ease, opacity .2s ease}
-.lens.drag{transition:none}
+/* 拖曳中：整顆放大、中央全透、只有四周折射亮環（液態玻璃手感）。
+   刻意不用 transform／opacity／backdrop-filter
+   （合成觸發會讓分頁列的 backdrop-filter 在 iOS 失效），改以
+   width（JS 設）＋top/bottom＋邊緣漸層與內陰影達成同樣觀感。 */
+.lens.drag{transition:top .12s ease, bottom .12s ease, width .12s ease, background .12s ease;
+  top:2px; bottom:2px; background:var(--lens-drag);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
+    inset 0 1.5px 1px rgba(255,255,255,.5),
+    inset 0 -1.5px 2px -1px rgba(0,0,0,.34),
+    0 4px 16px -5px rgba(0,0,0,.5)}
 @media (prefers-reduced-motion: reduce){
   .lens{transition:none}
 }
@@ -593,7 +603,7 @@ function updateTabLens() {
 }
 window.addEventListener('resize', updateTabLens);
 (function () {
-  let pressing = false, dragging = false, suppressClick = false, lastX = 0;
+  let pressing = false, dragging = false, suppressClick = false, lastX = 0, baseW = 0;
   function nearestTab(clientX) {
     const r = tabInner.getBoundingClientRect();
     const xr = clientX - r.left;
@@ -606,8 +616,12 @@ window.addEventListener('resize', updateTabLens);
     return best;
   }
   function clearNear() { tabBtns.forEach(b => b.classList.remove('near')); }
+  const STRETCH = 14;               // 拖曳時膠囊放大的像素（水平；垂直由 CSS top/bottom）
   function moveLens(clientX) {
     const r = tabInner.getBoundingClientRect();
+    if (baseW && tabLens.offsetWidth !== baseW + STRETCH) {
+      tabLens.style.width = (baseW + STRETCH) + 'px';
+    }
     const w = tabLens.offsetWidth;
     let left = clientX - r.left - w / 2;
     left = Math.max(6, Math.min(r.width - w - 6, left));
@@ -625,6 +639,7 @@ window.addEventListener('resize', updateTabLens);
     if (!pressing) return;
     if (!dragging && Math.abs(e.clientX - lastX) > 6) {
       dragging = true;
+      baseW = tabLens.offsetWidth;
       tabLens.classList.add('drag');
       tabbarEl.classList.add('dragging');
       try { tabbarEl.setPointerCapture(e.pointerId); } catch (err) { }
