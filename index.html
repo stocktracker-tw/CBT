@@ -28,12 +28,11 @@
   --drift:rgba(200,120,220,.12);
   --ink:#F8F2EC; --ink2:#C7B7C2; --muted:#9C8D9A;
   --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.15);
-  --accent:#FF9A4D; --accent-hi:#FFB070; --accent-ink:#331A05;
+  --accent:#FF9A4D; --accent-ink:#331A05;
   --wash:rgba(255,154,77,.15);
   --violet:#B79DF5; --violet-wash:rgba(183,157,245,.16);
   --s-mood:#FF9A4D; --s-sleep:#B79DF5;
   --danger:#F0716B; --danger-wash:rgba(240,113,107,.12);
-  --good:#FF9A4D;
   --glass:rgba(255,220,205,.065);
   --glass-strong:rgba(24,16,26,.75);
   --glass-brd:rgba(255,255,255,.12);
@@ -594,7 +593,7 @@ function updateTabLens() {
 }
 window.addEventListener('resize', updateTabLens);
 (function () {
-  let pressing = false, dragging = false, suppressClick = false, lastX = 0, lastT = 0;
+  let pressing = false, dragging = false, suppressClick = false, lastX = 0;
   function nearestTab(clientX) {
     const r = tabInner.getBoundingClientRect();
     const xr = clientX - r.left;
@@ -613,14 +612,14 @@ window.addEventListener('resize', updateTabLens);
     let left = clientX - r.left - w / 2;
     left = Math.max(6, Math.min(r.width - w - 6, left));
     tabLens.style.left = left + 'px';
-    lastX = clientX; lastT = performance.now();
+    lastX = clientX;
     const nb = nearestTab(clientX);
     tabBtns.forEach(b => b.classList.toggle('near', b === nb));
   }
   tabbarEl.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pressing = true; dragging = false;
-    lastX = e.clientX; lastT = performance.now();
+    lastX = e.clientX;
   });
   tabbarEl.addEventListener('pointermove', e => {
     if (!pressing) return;
