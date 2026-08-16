@@ -631,9 +631,15 @@ window.addEventListener('resize', updateTabLens);
       tabLens.style.width = (baseW + STRETCH) + 'px';
     }
     const w = tabLens.offsetWidth;
-    let left = clientX - r.left - w / 2;
-    left = Math.max(6, Math.min(r.width - w - 6, left));
-    tabLens.style.left = left + 'px';
+    // 夾限用「膠囊中心」對齊頭尾分頁的中心：放大後的膠囊因此會微微超出
+    // bar 兩端，但拖到底時正好以第一顆／最後一顆 icon 為中心（原本改夾
+    // 膠囊邊緣，拖到底會偏向內側、對不準 icon）
+    const first = tabBtns[0], last = tabBtns[tabBtns.length - 1];
+    const loC = first.offsetLeft + first.offsetWidth / 2;
+    const hiC = last.offsetLeft + last.offsetWidth / 2;
+    let cx = clientX - r.left;
+    cx = Math.max(loC, Math.min(hiC, cx));
+    tabLens.style.left = (cx - w / 2) + 'px';
     lastX = clientX;
     const nb = nearestTab(clientX);
     tabBtns.forEach(b => b.classList.toggle('near', b === nb));
