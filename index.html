@@ -673,7 +673,7 @@ window.addEventListener('resize', updateTabLens);
     if (baseW && tabLens.offsetWidth !== baseW + STRETCH) {
       tabLens.style.width = (baseW + STRETCH) + 'px';
     }
-    const w = tabLens.offsetWidth;
+    const w = baseW ? baseW + STRETCH : tabLens.offsetWidth;
     // 夾限用「膠囊中心」對齊頭尾分頁的中心：放大後的膠囊因此會微微超出
     // bar 兩端，但拖到底時正好以第一顆／最後一顆 icon 為中心（原本改夾
     // 膠囊邊緣，拖到底會偏向內側、對不準 icon）
@@ -694,8 +694,10 @@ window.addEventListener('resize', updateTabLens);
   // offsetLeft——過場還沒開始跑，讀到的是動畫前的舊值，位移會算成 0。
   function snapLens(b) {
     if (!b) return null;
-    tabLens.style.width = (baseW + STRETCH) + 'px';
-    const w = tabLens.offsetWidth;
+    // 用「目標寬度」而不是 offsetWidth：寬度過場還沒跑完時 offsetWidth 讀到的
+    // 是放大前的值，夾限會鬆掉整整一個 STRETCH，頭尾分頁就凸出去了
+    const w = baseW + STRETCH;
+    tabLens.style.width = w + 'px';
     const c = b.offsetLeft + b.offsetWidth / 2;
     const L = c - w / 2;
     tabLens.style.left = L + 'px';
@@ -724,10 +726,11 @@ window.addEventListener('resize', updateTabLens);
   // 才在那顆 icon 上方縮回原本大小、恢復不透明度。原本是放開當下就拿掉
   // .drag，於是縮回與滑動同時進行——移動途中就變回不透明，形變也發生在
   // 兩顆 icon 之間的半路上。
-  // 不等滑動 100% 走完：.35s 的減速曲線在 ~83% 的時間就已經走完約 97% 的距離，
-  // 這時膠囊早就落在目標 icon 上，提早開始收尾可以省下近 100ms 的呆滯感。
-  const GLIDE_MS = 290;      // .lens.drag 的 left 是 .35s，這裡刻意提早
-  const SETTLE_MS = 140;     // 原地放開（沒有位移）時的收尾等待
+  // 收尾與滑動重疊 50%：滑動 .35s 走到一半就開始收（175ms），形變 .18s 於是
+  // 在 355ms 前後結束，剛好和滑動同時落地。整段從按下到收好約 360ms，貼近
+  // 原生的節奏。代價是「變化完全在 icon 上方」放寬成「後半段在 icon 上方」。
+  const GLIDE_MS = 175;      // .lens.drag 的 left 是 .35s，取一半
+  const SETTLE_MS = 100;     // 原地放開（沒有位移）時的收尾等待
   let settleTimer = 0;
   function endSettle() {
     lensSettling = false;
