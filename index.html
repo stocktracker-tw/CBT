@@ -643,7 +643,10 @@ const tabbarEl = document.querySelector('.tabbar');
 const tabInner = tabbarEl.querySelector('.inner');
 const tabLens = document.getElementById('tabLens');
 const tabBtns = $$('.tab');
+// 收尾動畫進行中：膠囊正維持放大＋全透滑向目標分頁，這時不能把它拉回去
+let lensSettling = false;
 function updateTabLens() {
+  if (lensSettling) return;
   const act = tabInner.querySelector('.tab.on');
   if (!act) return;
   tabLens.style.width = act.offsetWidth + 'px';
@@ -687,13 +690,17 @@ window.addEventListener('resize', updateTabLens);
   // 按下就放大：膠囊在 pointerdown 當下就進入拖曳外觀（放大＋全透＋折射亮環）
   // 並吸附到按到的那顆分頁中心，和 stock tracker 的 down() 一致。原本要先
   // 移動超過 6px 才觸發，所以單純點一下完全沒有反應。
+  // 回傳目標 left：settleTo 要用它算位移。不能在設完 style.left 之後讀
+  // offsetLeft——過場還沒開始跑，讀到的是動畫前的舊值，位移會算成 0。
   function snapLens(b) {
-    if (!b) return;
+    if (!b) return null;
     tabLens.style.width = (baseW + STRETCH) + 'px';
     const w = tabLens.offsetWidth;
     const c = b.offsetLeft + b.offsetWidth / 2;
-    tabLens.style.left = (c - w / 2) + 'px';
+    const L = c - w / 2;
+    tabLens.style.left = L + 'px';
     tabBtns.forEach(t => t.classList.toggle('near', t === b));
+    return L;
   }
   tabbarEl.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -713,16 +720,37 @@ window.addEventListener('resize', updateTabLens);
     tabLens.classList.add('tracking');   // 跟手期間關掉過場，才不會拖到有延遲
     moveLens(e.clientX);
   });
+  // 放開之後的收尾：膠囊「維持放大＋全透」滑到目標分頁，等它真的到位了，
+  // 才在那顆 icon 上方縮回原本大小、恢復不透明度。原本是放開當下就拿掉
+  // .drag，於是縮回與滑動同時進行——移動途中就變回不透明，形變也發生在
+  // 兩顆 icon 之間的半路上。
+  const GLIDE_MS = 780;      // 對齊 .lens.drag 的 left .78s
+  const SETTLE_MS = 240;     // 原地放開（沒有位移）時的收尾等待
+  let settleTimer = 0;
+  function endSettle() {
+    lensSettling = false;
+    tabLens.classList.remove('drag');
+    tabbarEl.classList.remove('dragging');
+    clearNear();
+    updateTabLens();
+  }
+  function settleTo(nb) {
+    tabLens.classList.remove('tracking');   // 打開過場，讓它滑過去
+    const before = tabLens.offsetLeft;
+    const L = snapLens(nb);                  // 仍在 .drag：全程維持放大＋全透
+    const travel = L === null ? 0 : Math.abs(L - before);
+    lensSettling = true;
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(endSettle, travel > 2 ? GLIDE_MS : SETTLE_MS);
+  }
   tabbarEl.addEventListener('pointerup', e => {
     if (dragging) {
-      const nb = nearestTab(e.clientX);
-      tabLens.classList.remove('drag');
-      tabLens.classList.remove('tracking');
-      tabbarEl.classList.remove('dragging');
-      clearNear();
+      const nb = nearestTab(e.clientX) || tabInner.querySelector('.tab.on');
       suppressClick = true;
+      settleTo(nb);
+      // 內容立刻換（不等動畫）；updateTabLens 在收尾期間會被 settling 擋掉，
+      // 所以不會把還在滑動的膠囊拉回去
       if (nb && nb.dataset.v !== currentView) show(nb.dataset.v);
-      else updateTabLens();
     }
     pressing = false; dragging = false;
   });
@@ -730,11 +758,7 @@ window.addEventListener('resize', updateTabLens);
     pressing = false;
     if (dragging) {
       dragging = false;
-      tabLens.classList.remove('drag');
-      tabLens.classList.remove('tracking');
-      tabbarEl.classList.remove('dragging');
-      clearNear();
-      updateTabLens();
+      settleTo(tabInner.querySelector('.tab.on'));
     }
   });
   tabbarEl.addEventListener('click', e => {
