@@ -180,7 +180,7 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
     inset 0 0 0 1px rgba(255,255,255,.14),
     inset 0 -1px 2px -1px rgba(0,0,0,.35),
     0 2px 8px -3px rgba(0,0,0,.4);
-  transition:left .35s cubic-bezier(.32,.72,0,1), width .22s ease, opacity .16s ease}
+  transition:left .35s cubic-bezier(.32,.72,0,1), width .18s ease, opacity .14s ease}
 /* 拖曳中：整顆放大、中央全透、只有四周折射亮環（液態玻璃手感）。
    刻意不用 transform／opacity／backdrop-filter
    （合成觸發會讓分頁列的 backdrop-filter 在 iOS 失效），改以
@@ -188,8 +188,8 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
 /* 速度對齊 iOS 原生（約 .35s，Apple 慣用的 cubic-bezier(.32,.72,0,1)）：這段動畫在點擊時只播得到前半段就被 pointerup
    打斷，太快的話根本看不出膠囊有「滑」過去。放大與變透也一起放慢到 .24s，
    不然膠囊已經到位了、形變還沒被看見。 */
-.lens.drag{transition:left .35s cubic-bezier(.32,.72,0,1), top .22s ease, bottom .22s ease,
-    width .22s ease, background .22s ease;
+.lens.drag{transition:left .35s cubic-bezier(.32,.72,0,1), top .18s ease, bottom .18s ease,
+    width .18s ease, background .18s ease;
   top:-2px; bottom:-2px; background:var(--lens-drag);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
     inset 0 1.5px 1px rgba(255,255,255,.5),
@@ -724,8 +724,10 @@ window.addEventListener('resize', updateTabLens);
   // 才在那顆 icon 上方縮回原本大小、恢復不透明度。原本是放開當下就拿掉
   // .drag，於是縮回與滑動同時進行——移動途中就變回不透明，形變也發生在
   // 兩顆 icon 之間的半路上。
-  const GLIDE_MS = 360;      // 對齊 .lens.drag 的 left .35s
-  const SETTLE_MS = 200;     // 原地放開（沒有位移）時的收尾等待
+  // 不等滑動 100% 走完：.35s 的減速曲線在 ~83% 的時間就已經走完約 97% 的距離，
+  // 這時膠囊早就落在目標 icon 上，提早開始收尾可以省下近 100ms 的呆滯感。
+  const GLIDE_MS = 290;      // .lens.drag 的 left 是 .35s，這裡刻意提早
+  const SETTLE_MS = 140;     // 原地放開（沒有位移）時的收尾等待
   let settleTimer = 0;
   function endSettle() {
     lensSettling = false;
