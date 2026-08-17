@@ -180,16 +180,16 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
     inset 0 0 0 1px rgba(255,255,255,.14),
     inset 0 -1px 2px -1px rgba(0,0,0,.35),
     0 2px 8px -3px rgba(0,0,0,.4);
-  transition:left .46s cubic-bezier(.2,1.4,.3,1), width .3s ease, opacity .2s ease}
+  transition:left .58s cubic-bezier(.2,1.4,.3,1), width .3s ease, opacity .2s ease}
 /* 拖曳中：整顆放大、中央全透、只有四周折射亮環（液態玻璃手感）。
    刻意不用 transform／opacity／backdrop-filter
    （合成觸發會讓分頁列的 backdrop-filter 在 iOS 失效），改以
    width（JS 設）＋top/bottom＋邊緣漸層與內陰影達成同樣觀感。 */
-/* 滑動刻意放慢（.26s → .46s）：這段動畫在點擊時只播得到前半段就被 pointerup
+/* 滑動刻意放慢（.26s → .58s）：這段動畫在點擊時只播得到前半段就被 pointerup
    打斷，太快的話根本看不出膠囊有「滑」過去。放大與變透也一起放慢到 .24s，
    不然膠囊已經到位了、形變還沒被看見。 */
-.lens.drag{transition:left .46s cubic-bezier(.22,.8,.24,1), top .24s ease, bottom .24s ease,
-    width .24s ease, background .24s ease;
+.lens.drag{transition:left .58s cubic-bezier(.22,.8,.24,1), top .3s ease, bottom .3s ease,
+    width .3s ease, background .3s ease;
   top:-2px; bottom:-2px; background:var(--lens-drag);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
     inset 0 1.5px 1px rgba(255,255,255,.5),
