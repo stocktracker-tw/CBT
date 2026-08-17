@@ -330,13 +330,16 @@ details.acc .acc-body{padding:0 16px 14px}
   backdrop-filter:blur(18px) saturate(1.5); -webkit-backdrop-filter:blur(18px) saturate(1.5);
   padding:14px; text-align:left; display:flex; flex-direction:column; gap:6px; transition:border-color .15s, transform .1s; color:var(--ink)}
 .tool-tile:hover{border-color:color-mix(in srgb, var(--accent) 50%, transparent); transform:translateY(-1px)}
-.tool-tile .ic{width:34px; height:34px; border-radius:10px; background:var(--wash); display:flex; align-items:center; justify-content:center;
-  box-shadow:inset 0 1px 0 var(--orb-hi)}
-.tool-tile .ic svg{width:19px; height:19px; stroke:var(--accent); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+/* 工具圖示改用系統 emoji：在 iPhone / Mac 上這是 Apple 自己畫的 Apple Color
+   Emoji，比手繪線條穩，也不用嵌任何素材（只是一個 Unicode 字元，字型在裝置上）。
+   emoji 本身就是去背的，所以底下那塊 --wash 圓角方塊拿掉，直接放字。 */
+.tool-tile .ic{width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  font-size:26px; line-height:1; letter-spacing:0;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+  /* 深色底上讓 emoji 稍微浮起來，不然會像貼紙黏在背景上 */
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
 .tool-tile .tt{font-weight:700; font-size:14px}
 .tool-tile .td{font-size:12px; color:var(--muted); line-height:1.5}
-.tool-tile.night .ic{background:var(--violet-wash)}
-.tool-tile.night .ic svg{stroke:var(--violet)}
 .pill-scale{display:flex; gap:8px; margin:8px 0 2px}
 .pill-scale button{flex:1; border:1px solid var(--glass-brd); background:var(--card2); border-radius:14px; padding:9px 4px; font-size:12.5px; color:var(--ink2); line-height:1.35}
 .pill-scale button.on{border-color:color-mix(in srgb, var(--accent) 55%, transparent); background:var(--wash); color:var(--accent); font-weight:700;
@@ -820,18 +823,19 @@ renderers.today = function renderToday() {
 
 function toolTile(key, title, desc) {
   const night = key === 'braindump' || key === 'cantsleep';
+  // 系統 emoji：在 Apple 裝置上就是 Apple Color Emoji，不需要嵌任何素材
   const icons = {
-    breath: '<path d="M3 8h9a3 3 0 100-5"/><path d="M3 12h14a3 3 0 110 6"/><path d="M3 16h6a2.5 2.5 0 11-1 4.8"/>',
-    thought: '<path d="M19.5 12.6v5.1a2 2 0 0 1-2 2H6.3a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h5.1"/><path d="M16.3 3.9l3.6 3.6-6.9 6.9-4.3.7.7-4.3z"/>',
-    worry: '<path d="M8 4h13M8 12h13M8 20h13"/><circle cx="3.6" cy="4" r="1.4"/><circle cx="3.6" cy="12" r="1.4"/><circle cx="3.6" cy="20" r="1.4"/>',
-    activate: '<circle cx="13.6" cy="4.6" r="1.9"/><path d="M12.9 8.1l-1.7 4.4 2.7 2.3.7 4.7"/><path d="M11.2 12.5l-2.6 2.9-.9 3.7"/><path d="M13.3 9.6l3.2 1.8"/>',
-    braindump: '<path d="M20.5 14A8.5 8.5 0 1110 3.5a7 7 0 0010.5 10.5z"/>',
-    cantsleep: '<path d="M6 8h6l-6 8h6"/><path d="M15 3h5l-5 6h5"/>',
-    fivemin: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2M9.5 2.5h5"/>',
-    assess: '<path d="M7 3.5h10a2 2 0 012 2v15a1 1 0 01-1 1H6a1 1 0 01-1-1v-15a2 2 0 012-2z"/><path d="M9 8.5h6M9 12.5h6M9 16.5h3"/>'
+    breath: '🧘',
+    thought: '💭',
+    worry: '📝',
+    activate: '🚶',
+    braindump: '🧠',
+    cantsleep: '😴',
+    fivemin: '⏱️',
+    assess: '📋'
   };
   return '<button class="tool-tile' + (night ? ' night' : '') + '" data-tool="' + key + '">' +
-    '<span class="ic"><svg viewBox="0 0 24 24">' + icons[key] + '</svg></span>' +
+    '<span class="ic" aria-hidden="true">' + icons[key] + '</span>' +
     '<span class="tt">' + esc(title) + '</span><span class="td">' + esc(desc) + '</span></button>';
 }
 
