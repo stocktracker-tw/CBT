@@ -185,7 +185,8 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
    刻意不用 transform／opacity／backdrop-filter
    （合成觸發會讓分頁列的 backdrop-filter 在 iOS 失效），改以
    width（JS 設）＋top/bottom＋邊緣漸層與內陰影達成同樣觀感。 */
-.lens.drag{transition:top .12s ease, bottom .12s ease, width .12s ease, background .12s ease;
+.lens.drag{transition:left .26s cubic-bezier(.2,.8,.2,1), top .12s ease, bottom .12s ease,
+    width .12s ease, background .12s ease;
   top:-2px; bottom:-2px; background:var(--lens-drag);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
     inset 0 1.5px 1px rgba(255,255,255,.5),
@@ -199,6 +200,10 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
   .lens.drag{-webkit-backdrop-filter:url(#lglass-cap) blur(.5px) saturate(1.5);
     backdrop-filter:url(#lglass-cap) blur(.5px) saturate(1.5)}
 }
+/* 手指真的在拖的時候要即時跟手，不能有過場延遲——等同 stock tracker 在
+   follow() 裡加回 .drag（transition:none）的作用。按下那一下不加這個
+   class，所以膠囊會「滑」到按到的分頁，而不是瞬移。 */
+.lens.tracking{transition:none}
 @media (prefers-reduced-motion: reduce){
   .lens{transition:none}
 }
@@ -676,26 +681,40 @@ window.addEventListener('resize', updateTabLens);
     const nb = nearestTab(clientX);
     tabBtns.forEach(b => b.classList.toggle('near', b === nb));
   }
+  // 按下就放大：膠囊在 pointerdown 當下就進入拖曳外觀（放大＋全透＋折射亮環）
+  // 並吸附到按到的那顆分頁中心，和 stock tracker 的 down() 一致。原本要先
+  // 移動超過 6px 才觸發，所以單純點一下完全沒有反應。
+  function snapLens(b) {
+    if (!b) return;
+    tabLens.style.width = (baseW + STRETCH) + 'px';
+    const w = tabLens.offsetWidth;
+    const c = b.offsetLeft + b.offsetWidth / 2;
+    tabLens.style.left = (c - w / 2) + 'px';
+    tabBtns.forEach(t => t.classList.toggle('near', t === b));
+  }
   tabbarEl.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    pressing = true; dragging = false;
+    pressing = true; dragging = true;
     lastX = e.clientX;
+    // 基準寬度取自目前選取的分頁，而不是膠囊當下的寬度——連續快按時膠囊
+    // 可能還停在放大狀態，讀它會愈按愈寬
+    const act = tabInner.querySelector('.tab.on');
+    baseW = act ? act.offsetWidth : tabLens.offsetWidth;
+    tabLens.classList.add('drag');
+    tabbarEl.classList.add('dragging');
+    try { tabbarEl.setPointerCapture(e.pointerId); } catch (err) { }
+    snapLens(nearestTab(e.clientX));
   });
   tabbarEl.addEventListener('pointermove', e => {
     if (!pressing) return;
-    if (!dragging && Math.abs(e.clientX - lastX) > 6) {
-      dragging = true;
-      baseW = tabLens.offsetWidth;
-      tabLens.classList.add('drag');
-      tabbarEl.classList.add('dragging');
-      try { tabbarEl.setPointerCapture(e.pointerId); } catch (err) { }
-    }
-    if (dragging) moveLens(e.clientX);
+    tabLens.classList.add('tracking');   // 跟手期間關掉過場，才不會拖到有延遲
+    moveLens(e.clientX);
   });
   tabbarEl.addEventListener('pointerup', e => {
     if (dragging) {
       const nb = nearestTab(e.clientX);
       tabLens.classList.remove('drag');
+      tabLens.classList.remove('tracking');
       tabbarEl.classList.remove('dragging');
       clearNear();
       suppressClick = true;
@@ -709,6 +728,7 @@ window.addEventListener('resize', updateTabLens);
     if (dragging) {
       dragging = false;
       tabLens.classList.remove('drag');
+      tabLens.classList.remove('tracking');
       tabbarEl.classList.remove('dragging');
       clearNear();
       updateTabLens();
