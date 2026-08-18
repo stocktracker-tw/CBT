@@ -712,6 +712,11 @@ function fitModalVV() {
   veil.style.top = vv.offsetTop + 'px';
   veil.style.height = vv.height + 'px';
   veil.style.bottom = 'auto';
+  // sheet 的 max-height 是用 100vh 算的，而 100vh 不會隨鍵盤縮——鍵盤升起時
+  // sheet 會長得比可見區還高，頂端（含橫桿與圓角）整片被推出畫面。
+  // 所以高度上限也要改用 visual viewport 算，並留 24px 讓上緣露出來。
+  const bx = veil.querySelector('.modal-box');
+  if (bx) bx.style.maxHeight = Math.max(160, vv.height - 24) + 'px';
 }
 let closingModal = false;
 function closeModal() {
@@ -728,6 +733,8 @@ function closeModal() {
     return;
   }
   closingModal = false;
+  const bx0 = document.querySelector('.modal-box');
+  if (bx0) bx0.style.maxHeight = '';
   const vv = window.visualViewport;
   if (vv) { vv.removeEventListener('resize', fitModalVV); vv.removeEventListener('scroll', fitModalVV); }
   modalGuard = null;
