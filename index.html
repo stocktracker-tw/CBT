@@ -624,7 +624,20 @@ function clearActiveTimer() {
    點一下把手＝關閉，鍵盤與讀螢幕也走得通（所以拿掉 ✕ 不會少一條路）。 */
 function attachSheetDrag(box, grab) {
   if (!box || !grab) return;
-  const MAXH = () => Math.min(innerHeight * 0.86, innerHeight - 90);
+  // 展開上限要讓 sheet 頂端停在頁面頂部固定元素「底下」——滑過頭的話橫桿會被
+  // 蓋住，就再也抓不回來了。沒有固定頂欄時也至少留 44px，看得出是一張紙。
+  const MAXH = () => {
+    let t = 0;
+    ['.brandbar', '.topglass', '.top'].forEach(sel => {
+      const e = document.querySelector(sel);
+      if (e && getComputedStyle(e).position === 'fixed') {
+        const r = e.getBoundingClientRect();
+        if (r.bottom > t) t = r.bottom;
+      }
+    });
+    const pad = parseFloat(getComputedStyle(box.parentNode).paddingBottom) || 10;
+    return Math.max(200, innerHeight - Math.max(t + 12, 44) - pad);
+  };
   let sy = 0, dy = 0, baseH = 0, moved = false, dragging = false;
 
   grab.addEventListener('pointerdown', e => {
