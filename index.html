@@ -370,7 +370,7 @@ details.acc .acc-body{padding:0 16px 14px}
 @media(min-width:560px){.modal-veil{align-items:center; padding:10px}}
 /* sheet 的邊界靠三件事講清楚：上緣一道亮線、比 --glass-brd 更明顯的描邊、
    以及頂端那根 grabber（iOS 的 sheet 都有，是「這是一張可以關掉的紙」最直接的訊號）。 */
-.modal-box{background:var(--glass-strong); width:100%; max-width:560px; max-height:min(86vh, calc(100vh - 90px)); overflow-y:auto;
+.modal-box{background:var(--glass-strong); width:100%; max-width:560px; max-height:calc(100vh - 100px); min-height:0; overflow-y:auto;
   backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
   border-radius:28px; padding:10px 20px 22px; border:1px solid rgba(255,255,255,.30);
   box-shadow:0 18px 50px -14px rgba(0,0,0,.7), inset 0 1.5px 0 rgba(255,255,255,.30)}
@@ -385,7 +385,7 @@ details.acc .acc-body{padding:0 16px 14px}
 .sheet-grab:hover i{background:rgba(255,255,255,.5)}
 /* 拖曳用 margin-bottom（往下推）與 height（往上展開）——都是版面屬性，
    不會像 transform 那樣把元素提升成合成層而讓毛玻璃失效。 */
-.modal-box{transition:margin-bottom .3s cubic-bezier(.32,.72,0,1), height .3s cubic-bezier(.32,.72,0,1)}
+.modal-box{transition:margin-bottom .3s cubic-bezier(.32,.72,0,1)}
 .modal-box.dragging{transition:none}
 .modal-box h2{margin-top:0}
 
@@ -624,26 +624,15 @@ function clearActiveTimer() {
    點一下把手＝關閉，鍵盤與讀螢幕也走得通（所以拿掉 ✕ 不會少一條路）。 */
 function attachSheetDrag(box, grab) {
   if (!box || !grab) return;
-  // 展開上限要讓 sheet 頂端停在頁面頂部固定元素「底下」——滑過頭的話橫桿會被
-  // 蓋住，就再也抓不回來了。沒有固定頂欄時也至少留 44px，看得出是一張紙。
-  const MAXH = () => {
-    let t = 0;
-    ['.brandbar', '.topglass', '.top'].forEach(sel => {
-      const e = document.querySelector(sel);
-      if (e && getComputedStyle(e).position === 'fixed') {
-        const r = e.getBoundingClientRect();
-        if (r.bottom > t) t = r.bottom;
-      }
-    });
-    const pad = parseFloat(getComputedStyle(box.parentNode).paddingBottom) || 10;
-    return Math.max(200, innerHeight - Math.max(t + 12, 44) - pad);
-  };
-  let sy = 0, dy = 0, baseH = 0, moved = false, dragging = false;
+  let sy = 0, dy = 0, moved = false, dragging = false, raf = 0, pend = 0;
+
+  // 一幀只寫一次版面：pointermove 一幀會來好幾發，每發都動 margin 會逼出多次
+  // reflow，手感就是頓。用 rAF 合併成一次。
+  function apply() { raf = 0; box.style.marginBottom = (-pend) + 'px'; }
 
   grab.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    dragging = true; moved = false; sy = e.clientY; dy = 0;
-    baseH = box.getBoundingClientRect().height;
+    dragging = true; moved = false; sy = e.clientY; dy = 0; pend = 0;
     box.classList.add('dragging');
     try { grab.setPointerCapture(e.pointerId); } catch (err) { }
   });
@@ -652,36 +641,22 @@ function attachSheetDrag(box, grab) {
     if (!dragging) return;
     dy = e.clientY - sy;
     if (Math.abs(dy) > 3) moved = true;
-    if (dy > 0) {                       // 往下：把 sheet 推出畫面
-      box.style.height = '';
-      box.style.marginBottom = (-dy) + 'px';
-    } else {                            // 往上：長高，但不超過上限
-      box.style.marginBottom = '';
-      box.style.height = Math.min(baseH - dy, MAXH()) + 'px';
-    }
+    pend = dy > 0 ? dy : 0;          // 只跟往下的手勢；往上拉不動
+    if (!raf) raf = requestAnimationFrame(apply);
   });
 
   function end() {
     if (!dragging) return;
     dragging = false;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
     box.classList.remove('dragging');
-    const expanded = box.classList.contains('expanded');
-    if (dy > 90) {                      // 滑掉
+    if (dy > 90) {                   // 滑掉
       box.style.marginBottom = -innerHeight + 'px';
       setTimeout(requestCloseModal, 180);
       return;
     }
-    box.style.marginBottom = '';
-    if (dy < -50 && !expanded) {        // 展開
-      box.classList.add('expanded');
-      box.style.height = MAXH() + 'px';
-    } else if (dy > 40 && expanded) {   // 收回原本高度
-      box.classList.remove('expanded');
-      box.style.height = '';
-    } else {
-      box.style.height = expanded ? MAXH() + 'px' : '';
-    }
-    if (!moved) requestCloseModal();    // 只是點一下＝關閉
+    box.style.marginBottom = '';     // 沒過門檻就彈回去
+    if (!moved) requestCloseModal(); // 只是點一下＝關閉
   }
   grab.addEventListener('pointerup', end);
   grab.addEventListener('pointercancel', end);
