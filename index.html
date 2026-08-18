@@ -143,13 +143,25 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
      will-change／巢狀 backdrop-filter（玻璃裡放玻璃同樣會讓毛玻璃掉）。
    ★ 質感三件套：1) 邊緣折射交給 #lglass 2) 方向性高光（左上亮弧＋右下微反射，
      取代均勻白線）3) 底緣內陰影＝厚度，讓它從「貼紙」變「有厚度的玻璃板」。 */
-.tabbar{position:fixed; left:0; right:0; margin-left:auto; margin-right:auto;
+/* 底部這一組＝左邊的分頁膠囊 ＋ 右邊一顆獨立圓鈕（iOS 相簿那種排法）。
+   兩者都是各自 position:fixed，靠 --bargrp 這條共同的「群組寬度」對齊：
+   膠囊貼群組左緣、圓鈕貼群組右緣，中間留白。刻意不用共同的 flex 容器包起來
+   ——分頁列是 backdrop-filter 元素，多包一層容器容易連帶影響它的合成層。 */
+:root{
+  --bargrp:min(440px, calc(100vw - 32px));   /* 整組的左右邊界 */
+  --barh:58px;                                /* bar 高＝圓鈕直徑 */
+  --bargap:20px;                              /* 膠囊與圓鈕之間的留白 */
+  /* 膠囊吃掉群組扣掉圓鈕與留白之後的全部寬度：pill + gap + 圓鈕 = 群組寬 */
+  --barpill:calc(var(--bargrp) - var(--barh) - var(--bargap));
+  --barbot:max(8px, calc(env(safe-area-inset-bottom,0px) - 8px));
+}
+.tabbar{position:fixed; left:calc(50% - var(--bargrp)/2); right:auto;
   /* iPhone 的 safe-area-inset-bottom 約 34px，跟 11px 相加＝離螢幕底部 45px，
      浮太高。改成從安全區往下收 8px：iPhone 26px（原 45）／沒有 home
      indicator 的裝置 8px（原 11）。浮動膠囊列本來就會稍微進到安全區裡，
      貼齊安全區邊界反而顯得懸空。max() 保底，避免小螢幕貼到見底。 */
-  bottom:max(8px, calc(env(safe-area-inset-bottom,0px) - 8px)); z-index:40;
-  width:min(440px, calc(100vw - 32px));
+  bottom:var(--barbot); z-index:40;
+  width:var(--barpill);
   background:var(--glass-strong);
   backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
   border:1px solid var(--glass-brd); border-radius:999px;
@@ -161,6 +173,28 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
     inset -3px -4px 10px -7px rgba(255,255,255,.16),
     inset 0 -1.5px 3px -1px rgba(0,0,0,.42);
   touch-action:none; user-select:none; -webkit-user-select:none}
+/* 右邊那顆獨立圓鈕：跟分頁列同高、同一套玻璃，貼群組右緣。 */
+.baract{position:fixed; right:calc(50% - var(--bargrp)/2); bottom:var(--barbot);
+  z-index:40; width:var(--barh); height:var(--barh); border-radius:999px;
+  display:flex; align-items:center; justify-content:center; padding:0;
+  background:var(--glass-strong);
+  backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
+  border:1px solid var(--glass-brd);
+  box-shadow:0 18px 44px -16px rgba(0,0,0,.5),
+    0 2px 6px rgba(0,0,0,.26),
+    inset 0 0 0 1px rgba(255,255,255,.10),
+    inset 0 1.5px 0 rgba(255,255,255,.30),
+    inset 3px 4px 10px -6px rgba(255,255,255,.34),
+    inset -3px -4px 10px -7px rgba(255,255,255,.16),
+    inset 0 -1.5px 3px -1px rgba(0,0,0,.42);
+  color:var(--ink2); cursor:pointer;
+  /* 不用 transform 縮放（合成層會破壞 iOS 毛玻璃），按下改用亮度變化 */
+  transition:color .15s, filter .15s}
+.baract:hover{color:var(--accent)}
+.baract:active{filter:brightness(1.25)}
+.baract svg{width:26px; height:26px; display:block; fill:none;
+  stroke:currentColor; stroke-width:2; stroke-linecap:round}
+.baract:focus:not(:focus-visible){outline:none}
 .tabbar .inner{display:flex; padding:6px; position:relative}
 .tab{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:0;
   /* 高度對齊原生浮動膠囊列：26px icon + 上下 9px = 44px（Apple 的最小觸控
@@ -383,7 +417,7 @@ details.acc .acc-body{padding:0 16px 14px}
 /* ---------- 原生殼模式（?native=1）---------- */
 /* 分頁列由原生層的 SwiftUI 提供（真・SF Symbols ＋ 系統 Liquid Glass），
    網頁自己這條就收起來，底部留白也跟著收，內容不會多出一大塊空白。 */
-html.nativeshell .tabbar{display:none}
+html.nativeshell .tabbar,html.nativeshell .baract{display:none}
 html.nativeshell #app{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 </style>
 
@@ -412,6 +446,9 @@ html.nativeshell #app{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px)
     <button class="tab" data-v="learn"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15.5H6.5A2.5 2.5 0 004 21z"/><path d="M4 18.5A2.5 2.5 0 016.5 16H20"/></svg>學習</button>
   </div>
 </nav>
+<button class="baract" id="quickNote" aria-label="新增筆記" title="新增筆記">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
 
 <div id="modal-root"></div>
 <div id="toast" role="status"></div>
@@ -462,6 +499,7 @@ const DEFAULT_DATA = () => ({
   worries: [],
   activities: [],
   braindumps: [],
+  notes: [],
   assessments: []
 });
 
@@ -485,6 +523,7 @@ function sanitizeData(d) {
   out.worries = arr(d.worries).map(x => ({ id: sid(x.id), date: dstr(x.date), text: str(x.text, 200), kind: (x.kind === 'c' || x.kind === 'u') ? x.kind : null, nextStep: str(x.nextStep, 120), done: !!x.done }));
   out.activities = arr(d.activities).map(a => ({ id: sid(a.id), date: dstr(a.date), text: str(a.text, 100), type: a.type === 'joy' ? 'joy' : 'win', done: !!a.done }));
   out.braindumps = arr(d.braindumps).map(b => ({ id: sid(b.id), date: dstr(b.date), text: str(b.text) }));
+  out.notes = arr(d.notes).map(n => ({ id: sid(n.id), date: dstr(n.date), text: str(n.text) }));
   out.assessments = arr(d.assessments).map(a => ({ id: sid(a.id), date: dstr(a.date), answers: Array.isArray(a.answers) ? a.answers.map(v => num(v, 0, 3, 0)) : [], phq: num(a.phq, 0, 6, 0), gad: num(a.gad, 0, 6, 0) }));
   const p = isObj(d.program) ? d.program : {};
   out.program = { day: num(p.day, 1, 100000, 1), completed: {} };
@@ -648,6 +687,9 @@ window.__mindrise = { show, get view() { return currentView } };
 
 /* ================= liquid lens drag ================= */
 const tabbarEl = document.querySelector('.tabbar');
+// 分頁列右邊那顆獨立圓鈕：隨手記一筆。它不是分頁，不進膠囊的計算。
+const quickNoteBtn = document.getElementById('quickNote');
+if (quickNoteBtn) quickNoteBtn.addEventListener('click', openQuickNote);
 const tabInner = tabbarEl.querySelector('.inner');
 const tabLens = document.getElementById('tabLens');
 const tabBtns = $$('.tab');
@@ -1276,6 +1318,39 @@ function openBraindump() {
   renderHist();
 }
 
+/* ---------- quick note（分頁列右邊那顆 ＋）---------- */
+/* 隨手記：不屬於任何一個工具的念頭、提醒、當下的感覺。刻意做得比工具輕——
+   打開就是一個輸入框，寫完存檔，其餘都在「紀錄」裡看。 */
+function openQuickNote() {
+  const box = openModal(
+    '<h2>新增筆記</h2><p class="sub">不用分類、不用評分。想到什麼就記什麼，之後在「紀錄」找得到。</p>' +
+    '<div class="field"><textarea id="qn-in" style="min-height:120px" placeholder="現在想記下什麼？"></textarea></div>' +
+    '<button class="btn block" id="qn-save">存起來</button><div id="qn-hist"></div>',
+    () => box.querySelector('#qn-in').value.trim() ? '這筆還沒存，確定要關掉嗎？' : null);
+  const ta = box.querySelector('#qn-in');
+  const hist = box.querySelector('#qn-hist');
+  function renderHist() {
+    if (!D.notes.length) { hist.innerHTML = ''; return; }
+    hist.innerHTML = '<p class="week-label">最近的筆記</p>' + D.notes.slice(0, 3).map(n =>
+      '<details class="acc" style="box-shadow:none"><summary style="font-size:13px;padding:10px 14px">' +
+      fmtDate(n.date, true) + '<span class="arrow">›</span></summary>' +
+      '<div class="acc-body mut" style="white-space:pre-wrap">' + esc(n.text) + '</div></details>').join('');
+  }
+  box.querySelector('#qn-save').addEventListener('click', () => {
+    const t = ta.value.trim();
+    if (!t) { toast('寫一點點也可以'); return; }
+    D.notes.unshift({ id: uid(), date: todayKey(), text: t });
+    D.notes = D.notes.slice(0, 200);
+    save();
+    ta.value = '';
+    toast('記下來了');
+    renderHist();
+    if (currentView === 'history') renderers.history();
+  });
+  renderHist();
+  ta.focus();
+}
+
 /* ---------- can't sleep ---------- */
 function openCantSleep() {
   let ex = null;
@@ -1373,8 +1448,30 @@ renderers.history = function () {
     '</div></details>').join('');
   html += '</div>';
 
+  html += '<div class="card tight"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+    '<h3 style="margin:0">筆記</h3><button class="btn sm" id="hi-note">新增</button></div>';
+  if (!D.notes.length) html += '<div class="empty">還沒有筆記。分頁列右邊那顆 ＋ 隨時可以記一筆。</div>';
+  else html += D.notes.slice(0, 8).map(n =>
+    '<details class="acc" style="box-shadow:none;margin:8px 0"><summary style="font-size:13.5px;padding:10px 12px">' +
+    '<span class="grow" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+    esc(n.text.slice(0, 24)) + (n.text.length > 24 ? '…' : '') + '</span>' +
+    '<span class="arrow">›</span></summary>' +
+    '<div class="acc-body" style="font-size:13.5px;color:var(--ink2)">' +
+    '<p style="margin:4px 0"><b>' + fmtDate(n.date, true) + '</b></p>' +
+    '<p style="margin:4px 0;white-space:pre-wrap">' + esc(n.text) + '</p>' +
+    '<button class="linklike" data-del-note="' + n.id + '">刪除這筆</button>' +
+    '</div></details>').join('');
+  html += '</div>';
+
   v.innerHTML = html;
   $('#hi-assess').addEventListener('click', openAssessment);
+  $('#hi-note').addEventListener('click', openQuickNote);
+  v.querySelectorAll('[data-del-note]').forEach(btn => btn.addEventListener('click', () => {
+    if (!window.confirm('刪除這筆筆記？')) return;
+    D.notes = D.notes.filter(n => n.id !== btn.getAttribute('data-del-note'));
+    save();
+    renderers.history();
+  }));
   $('#viz-toggle').addEventListener('click', () => { chartMode = chartMode === 'chart' ? 'table' : 'chart'; renderers.history(); });
   renderViz($('#viz-body'));
 };
