@@ -374,13 +374,20 @@ details.acc .acc-body{padding:0 16px 14px}
   backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
   border-radius:28px; padding:10px 20px 22px; border:1px solid rgba(255,255,255,.30);
   box-shadow:0 18px 50px -14px rgba(0,0,0,.7), inset 0 1.5px 0 rgba(255,255,255,.30)}
-/* grabber：::before 是 sheet 的第一個子元素，用 sticky 讓它捲動時留在頂端。
-   不用 transform 定位（合成觸發會破壞 backdrop-filter）。 */
-.modal-box::before{content:""; display:block; position:sticky; top:0; z-index:2;
-  width:38px; height:5px; margin:0 auto 12px; border-radius:999px;
-  background:rgba(255,255,255,.32)}
+/* grabber：要能被抓，所以是真的元素不是 ::before（偽元素掛不上事件）。
+   sticky 讓它捲動時留在頂端；不用 transform 定位（合成觸發會破壞
+   backdrop-filter）。它同時也是「關閉」按鈕：點一下＝關掉，鍵盤也到得了。 */
+.sheet-grab{display:block; position:sticky; top:0; z-index:3; width:100%;
+  background:none; border:0; padding:6px 0 12px; cursor:grab; touch-action:none}
+.sheet-grab:active{cursor:grabbing}
+.sheet-grab i{display:block; width:38px; height:5px; margin:0 auto;
+  border-radius:999px; background:rgba(255,255,255,.32); transition:background .15s}
+.sheet-grab:hover i{background:rgba(255,255,255,.5)}
+/* 拖曳用 margin-bottom（往下推）與 height（往上展開）——都是版面屬性，
+   不會像 transform 那樣把元素提升成合成層而讓毛玻璃失效。 */
+.modal-box{transition:margin-bottom .3s cubic-bezier(.32,.72,0,1), height .3s cubic-bezier(.32,.72,0,1)}
+.modal-box.dragging{transition:none}
 .modal-box h2{margin-top:0}
-.modal-close{float:right; background:var(--card2); border:1px solid var(--glass-brd); border-radius:50%; width:32px; height:32px; font-size:15px; color:var(--ink2); line-height:1}
 
 /* ---------- toast ---------- */
 #toast{position:fixed; left:0; right:0; margin-left:auto; margin-right:auto; width:max-content; bottom:calc(106px + env(safe-area-inset-bottom,0px));
@@ -609,6 +616,64 @@ function clearActiveTimer() {
   if (activeTimer) { clearInterval(activeTimer); activeTimer = null; }
 }
 
+/* ================= sheet 拖曳 ================= */
+/* 上面那條橫桿是真的把手：往下滑關掉、往上滑展開看更多。
+   刻意「不」用 transform 位移——sheet 自己有 backdrop-filter，一旦被提升成
+   合成層，iOS 的毛玻璃就會失效（本專案踩過好幾次的地雷）。改用 margin-bottom
+   往下推、height 往上長，兩個都是版面屬性。
+   點一下把手＝關閉，鍵盤與讀螢幕也走得通（所以拿掉 ✕ 不會少一條路）。 */
+function attachSheetDrag(box, grab) {
+  if (!box || !grab) return;
+  const MAXH = () => Math.min(innerHeight * 0.86, innerHeight - 90);
+  let sy = 0, dy = 0, baseH = 0, moved = false, dragging = false;
+
+  grab.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    dragging = true; moved = false; sy = e.clientY; dy = 0;
+    baseH = box.getBoundingClientRect().height;
+    box.classList.add('dragging');
+    try { grab.setPointerCapture(e.pointerId); } catch (err) { }
+  });
+
+  grab.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    dy = e.clientY - sy;
+    if (Math.abs(dy) > 3) moved = true;
+    if (dy > 0) {                       // 往下：把 sheet 推出畫面
+      box.style.height = '';
+      box.style.marginBottom = (-dy) + 'px';
+    } else {                            // 往上：長高，但不超過上限
+      box.style.marginBottom = '';
+      box.style.height = Math.min(baseH - dy, MAXH()) + 'px';
+    }
+  });
+
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    box.classList.remove('dragging');
+    const expanded = box.classList.contains('expanded');
+    if (dy > 90) {                      // 滑掉
+      box.style.marginBottom = -innerHeight + 'px';
+      setTimeout(requestCloseModal, 180);
+      return;
+    }
+    box.style.marginBottom = '';
+    if (dy < -50 && !expanded) {        // 展開
+      box.classList.add('expanded');
+      box.style.height = MAXH() + 'px';
+    } else if (dy > 40 && expanded) {   // 收回原本高度
+      box.classList.remove('expanded');
+      box.style.height = '';
+    } else {
+      box.style.height = expanded ? MAXH() + 'px' : '';
+    }
+    if (!moved) requestCloseModal();    // 只是點一下＝關閉
+  }
+  grab.addEventListener('pointerup', end);
+  grab.addEventListener('pointercancel', end);
+}
+
 /* ================= modal ================= */
 let modalGuard = null, lastFocused = null;
 function openModal(html, guard) {
@@ -617,11 +682,11 @@ function openModal(html, guard) {
   lastFocused = document.activeElement;
   const root = $('#modal-root');
   root.innerHTML = '<div class="modal-veil"><div class="modal-box" role="dialog" aria-modal="true" tabindex="-1">' +
-    '<button class="modal-close" aria-label="關閉">✕</button>' + html + '</div></div>';
+    '<button class="sheet-grab" type="button" aria-label="關閉（也可以往下滑關掉、往上滑展開）"><i></i></button>' + html + '</div></div>';
   const veil = root.firstElementChild;
   const box = veil.querySelector('.modal-box');
   veil.addEventListener('click', e => { if (e.target === veil) requestCloseModal(); });
-  veil.querySelector('.modal-close').addEventListener('click', requestCloseModal);
+  attachSheetDrag(box, veil.querySelector('.sheet-grab'));
   const h2 = box.querySelector('h2');
   if (h2) { if (!h2.id) h2.id = 'modal-title-x'; box.setAttribute('aria-labelledby', h2.id); }
   box.addEventListener('keydown', e => {
