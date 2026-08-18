@@ -144,7 +144,11 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
    ★ 質感三件套：1) 邊緣折射交給 #lglass 2) 方向性高光（左上亮弧＋右下微反射，
      取代均勻白線）3) 底緣內陰影＝厚度，讓它從「貼紙」變「有厚度的玻璃板」。 */
 .tabbar{position:fixed; left:0; right:0; margin-left:auto; margin-right:auto;
-  bottom:calc(11px + env(safe-area-inset-bottom,0px)); z-index:40;
+  /* iPhone 的 safe-area-inset-bottom 約 34px，跟 11px 相加＝離螢幕底部 45px，
+     浮太高。改成從安全區往下收 8px：iPhone 26px（原 45）／沒有 home
+     indicator 的裝置 8px（原 11）。浮動膠囊列本來就會稍微進到安全區裡，
+     貼齊安全區邊界反而顯得懸空。max() 保底，避免小螢幕貼到見底。 */
+  bottom:max(8px, calc(env(safe-area-inset-bottom,0px) - 8px)); z-index:40;
   width:min(440px, calc(100vw - 32px));
   background:var(--glass-strong);
   backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
