@@ -163,7 +163,9 @@ textarea,input,select{font-family:inherit; font-size:15px; color:var(--ink)}
   touch-action:none; user-select:none; -webkit-user-select:none}
 .tabbar .inner{display:flex; padding:6px; position:relative}
 .tab{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:0;
-  background:none; border:none; padding:15px 4px; border-radius:999px; color:var(--muted); font-size:0;
+  /* 高度對齊原生浮動膠囊列：26px icon + 上下 9px = 44px（Apple 的最小觸控
+     目標就是 44pt，再矮就不好按）。原本 15px 讓 tab 56px、整條 70px。 */
+  background:none; border:none; padding:9px 4px; border-radius:999px; color:var(--muted); font-size:0;
   overflow:hidden;
   transition:color .15s;
   position:relative; z-index:1}
