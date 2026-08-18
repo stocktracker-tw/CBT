@@ -362,7 +362,7 @@ details.acc .acc-body{padding:0 16px 14px}
 /* ---------- modal ---------- */
 /* veil 壓深一點：原本 .42 太淡，sheet 和後面的頁面幾乎同一個明度，
    看起來就是「沒有邊界」。 */
-.modal-veil{position:fixed; inset:0; background:rgba(4,8,7,.58); z-index:60; display:flex; align-items:flex-end; justify-content:center;
+.modal-veil{position:fixed; inset:0; background:rgba(4,8,7,0); transition:background-color .26s ease; z-index:60; display:flex; align-items:flex-end; justify-content:center;
   /* 四邊都留白，sheet 才會是一張「浮起來的卡片」——貼齊邊緣的話只剩上面兩個
      圓角看得到，在深色背景上就等於沒有邊界。 */
   padding:0 10px calc(env(safe-area-inset-bottom,0px) + 10px);
@@ -650,11 +650,7 @@ function attachSheetDrag(box, grab) {
     dragging = false;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     box.classList.remove('dragging');
-    if (dy > 90) {                   // 滑掉
-      box.style.marginBottom = -innerHeight + 'px';
-      setTimeout(requestCloseModal, 180);
-      return;
-    }
+    if (dy > 90) { requestCloseModal(); return; }   // 滑掉（退場動畫由 closeModal 播）
     box.style.marginBottom = '';     // 沒過門檻就彈回去
     if (!moved) requestCloseModal(); // 只是點一下＝關閉
   }
@@ -686,6 +682,21 @@ function openModal(html, guard) {
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
   document.body.style.overflow = 'hidden';
+  // iOS 鍵盤升起時 layout viewport 不會縮，只有 visual viewport 會縮——貼底的
+  // fixed 面板因此會整片躲到鍵盤後面。把 veil 釘在 visual viewport 上，sheet
+  // 就一定落在鍵盤上方。沒有 visualViewport 的環境維持原本的 inset:0。
+  fitModalVV();
+  // 滑入：先無過場地放到畫面外，下一幀開過場並回到 0。不用 transform／opacity
+  // 位移（合成觸發會讓 backdrop-filter 失效），只動 margin-bottom 與底色。
+  box.classList.add('dragging');
+  box.style.marginBottom = -(box.offsetHeight + 40) + 'px';
+  requestAnimationFrame(() => {
+    box.classList.remove('dragging');
+    box.style.marginBottom = '';
+    veil.classList.add('shown');
+  });
+  const vv = window.visualViewport;
+  if (vv) { vv.addEventListener('resize', fitModalVV); vv.addEventListener('scroll', fitModalVV); }
   box.focus();
   return box;
 }
@@ -694,7 +705,31 @@ function requestCloseModal() {
   if (g && !window.confirm(g)) return;
   closeModal();
 }
+function fitModalVV() {
+  const veil = document.querySelector('.modal-veil');
+  const vv = window.visualViewport;
+  if (!veil || !vv) return;
+  veil.style.top = vv.offsetTop + 'px';
+  veil.style.height = vv.height + 'px';
+  veil.style.bottom = 'auto';
+}
+let closingModal = false;
 function closeModal() {
+  const veil = document.querySelector('.modal-veil');
+  const bx = veil && veil.querySelector('.modal-box');
+  if (veil && bx && !closingModal) {          // 先播退場動畫，跑完再真的清掉
+    closingModal = true;
+    veil.classList.remove('shown');
+    bx.classList.remove('dragging');
+    bx.style.marginBottom = -(bx.offsetHeight + 40) + 'px';
+    // 這裡刻意「不」先把旗標放掉：留著 true，260ms 後再進來才會走到真正的清理，
+    // 否則會一直重新播退場動畫、永遠關不掉（實測 sheet 不會消失）。
+    setTimeout(closeModal, 260);
+    return;
+  }
+  closingModal = false;
+  const vv = window.visualViewport;
+  if (vv) { vv.removeEventListener('resize', fitModalVV); vv.removeEventListener('scroll', fitModalVV); }
   modalGuard = null;
   clearActiveTimer();
   $('#modal-root').innerHTML = '';
