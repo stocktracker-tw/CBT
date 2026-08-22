@@ -176,24 +176,39 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
     inset 0 -1.5px 3px -1px rgba(0,0,0,.42);
   touch-action:none; user-select:none; -webkit-user-select:none}
 /* 右邊那顆獨立圓鈕：跟分頁列同高、同一套玻璃，貼群組右緣。 */
+/* 按壓效果與分頁列的選取膠囊同一套：兩層外觀用 opacity 交叉淡入（linear→radial
+   不能內插，直接換 background 會硬跳），尺寸用 width/height 長大。
+   一樣不用 transform／opacity 位移——合成觸發會讓 backdrop-filter 在 iOS 失效。 */
 .baract{position:fixed; right:calc(50% - var(--bargrp)/2); bottom:var(--barbot);
   z-index:40; width:var(--barh); height:var(--barh); border-radius:999px;
   display:flex; align-items:center; justify-content:center; padding:0;
-  background:var(--glass-strong);
+  background:none; border:0;
   backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
-  border:1px solid var(--glass-brd);
+  color:var(--ink2); cursor:pointer;
+  transition:color .15s, width .18s ease, height .18s ease, margin .18s ease}
+.baract::before,.baract::after{content:""; position:absolute; inset:0;
+  border-radius:inherit; transition:opacity .18s ease; pointer-events:none}
+.baract::before{opacity:1; background:var(--glass-strong);
   box-shadow:0 18px 44px -16px rgba(0,0,0,.5),
     0 2px 6px rgba(0,0,0,.26),
     inset 0 0 0 1px rgba(255,255,255,.10),
     inset 0 1.5px 0 rgba(255,255,255,.30),
     inset 3px 4px 10px -6px rgba(255,255,255,.34),
     inset -3px -4px 10px -7px rgba(255,255,255,.16),
-    inset 0 -1.5px 3px -1px rgba(0,0,0,.42);
-  color:var(--ink2); cursor:pointer;
-  /* 不用 transform 縮放（合成層會破壞 iOS 毛玻璃），按下改用亮度變化 */
-  transition:color .15s, filter .15s}
+    inset 0 -1.5px 3px -1px rgba(0,0,0,.42)}
+.baract::after{opacity:0; background:var(--lens-drag);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
+    inset 0 1.5px 1px rgba(255,255,255,.5),
+    inset 0 -1.5px 2px -1px rgba(0,0,0,.34),
+    0 4px 16px -5px rgba(0,0,0,.5)}
+/* 按住：長大 6px 並換成「中央全透、四周折射亮環」那一層。用負 margin 補償，
+   讓它從中心長大而不是往左上偏（它是靠 right/bottom 定位的）。 */
+.baract.press{width:calc(var(--barh) + 6px); height:calc(var(--barh) + 6px);
+  margin:0 -3px -3px 0}
+.baract.press::before{opacity:0}
+.baract.press::after{opacity:1}
+.baract svg{position:relative; z-index:1}
 .baract:hover{color:var(--accent)}
-.baract:active{filter:brightness(1.25)}
 .baract svg{width:26px; height:26px; display:block; fill:none;
   stroke:currentColor; stroke-width:2; stroke-linecap:round}
 .baract:focus:not(:focus-visible){outline:none}
@@ -803,7 +818,19 @@ window.__mindrise = { show, get view() { return currentView } };
 const tabbarEl = document.querySelector('.tabbar');
 // 分頁列右邊那顆獨立圓鈕：隨手記一筆。它不是分頁，不進膠囊的計算。
 const quickNoteBtn = document.getElementById('quickNote');
-if (quickNoteBtn) quickNoteBtn.addEventListener('click', openQuickNote);
+if (quickNoteBtn) {
+  quickNoteBtn.addEventListener('click', openQuickNote);
+  // 按壓效果與選取膠囊同一套：按下長大＋換成全透折射環，放開還原。
+  // pointercancel／pointerleave 也要收，不然手指滑開會卡在按住的樣子。
+  const pressOn = () => quickNoteBtn.classList.add('press');
+  const pressOff = () => quickNoteBtn.classList.remove('press');
+  quickNoteBtn.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pressOn();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+    quickNoteBtn.addEventListener(ev, pressOff));
+}
 const tabInner = tabbarEl.querySelector('.inner');
 const tabLens = document.getElementById('tabLens');
 const tabBtns = $$('.tab');
