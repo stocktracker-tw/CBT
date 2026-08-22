@@ -69,7 +69,15 @@ body{
 body::before{content:""; position:fixed; inset:0; z-index:-2; background:var(--ambient)}
 body::after{content:""; position:fixed; inset:-24%; z-index:-1; pointer-events:none;
   background:radial-gradient(32% 30% at 58% 42%, var(--drift), transparent 70%);
-  filter:blur(30px); animation:drift 48s ease-in-out infinite alternate}
+  /* steps() 不是為了做出「一格一格」的效果，是為了不要每幀重畫。
+     這層是 fixed、比視窗還大、又帶 30px 模糊，而且在所有內容「後面」——
+     它一動，上面整片內容就得跟著重畫。連續動畫等於整個 App 永遠停在
+     18fps（實測：關掉動畫 65fps、開著 18fps），滑 sheet、拖膠囊、捲頁
+     全都在掉幀。改成 96 階之後每 0.5 秒才重畫一次，每階位移 0.33px，
+     看不出來是跳的，fps 回到 59。
+     不要改回連續，也不要用 will-change 提升圖層——這層正是分頁列與卡片
+     backdrop-filter 取樣的底，提升圖層會讓 iOS 的毛玻璃失效。 */
+  filter:blur(30px); animation:drift 48s steps(96) infinite alternate}
 @keyframes drift{from{transform:translate3d(-4%,-2%,0) scale(1)} to{transform:translate3d(4%,3%,0) scale(1.1)}}
 *{box-sizing:border-box}
 #app{max-width:640px; margin:0 auto; padding:calc(80px + env(safe-area-inset-top,0px)) 16px calc(110px + env(safe-area-inset-bottom,0px));}
