@@ -211,8 +211,12 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
     0 4px 16px -5px rgba(0,0,0,.5)}
 /* 按住：長大 6px 並換成「中央全透、四周折射亮環」那一層。用負 margin 補償，
    讓它從中心長大而不是往左上偏（它是靠 right/bottom 定位的）。 */
-.baract.press{width:calc(var(--barh) + 6px); height:calc(var(--barh) + 6px);
-  margin:0 -3px -3px 0}
+/* 膠囊按下時每邊長 8px（44→60，1.36 倍）。圓鈕沒辦法照抄 8px：它已經是
+   整條 bar 的高度，底下只剩 8px 就到螢幕邊（有 home indicator 的機種是
+   26px）。取 6px 是在「看得出來」和「不要頂到螢幕邊」之間的折衷，
+   58→70＝1.21 倍，是原本 1.10 倍的兩倍。 */
+.baract.press{width:calc(var(--barh) + 12px); height:calc(var(--barh) + 12px);
+  margin:0 -6px -6px 0}
 .baract.press::before{opacity:0}
 .baract.press::after{opacity:1}
 .baract svg{position:relative; z-index:1}
