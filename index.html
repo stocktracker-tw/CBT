@@ -730,6 +730,13 @@ function openModal(html, guard) {
   // fixed 面板因此會整片躲到鍵盤後面。把 veil 釘在 visual viewport 上，sheet
   // 就一定落在鍵盤上方。沒有 visualViewport 的環境維持原本的 inset:0。
   fitModalVV();
+  // 自動聚焦要在「還沒被推到畫面外」之前做。iOS 只有在使用者手勢當下、而且
+  // 目標真的在畫面上時才肯把鍵盤叫起來；等下面把 sheet 挪到畫面外之後再
+  // focus，WebKit 會安靜地不理你（Chromium 兩種順序都會給焦點，所以這個差別
+  // 只在真機上看得出來）。標了 data-autofocus 的欄位才自動聚焦，其他 sheet
+  // 維持原本不跳鍵盤的行為。
+  const af = box.querySelector('[data-autofocus]');
+  if (af) { try { af.focus({ preventScroll: true }); } catch (e) { af.focus(); } }
   // 滑入：先無過場地放到畫面外，下一幀開過場並回到 0。不用 transform／opacity
   // 位移（合成觸發會讓 backdrop-filter 失效），只動 margin-bottom 與底色。
   box.classList.add('dragging');
@@ -741,7 +748,7 @@ function openModal(html, guard) {
   });
   const vv = window.visualViewport;
   if (vv) { vv.addEventListener('resize', fitModalVV); vv.addEventListener('scroll', fitModalVV); }
-  box.focus();
+  if (!af) box.focus();   // 有自動聚焦欄位時不要把焦點搶回容器
   return box;
 }
 function requestCloseModal() {
@@ -1499,7 +1506,7 @@ function openBraindump() {
 function openQuickNote() {
   const box = openModal(
     '<h2>新增筆記</h2><p class="sub">不用分類、不用評分。想到什麼就記什麼，之後在「紀錄」找得到。</p>' +
-    '<div class="field"><textarea id="qn-in" style="min-height:120px" placeholder="現在想記下什麼？"></textarea></div>' +
+    '<div class="field"><textarea id="qn-in" data-autofocus style="min-height:120px" placeholder="現在想記下什麼？"></textarea></div>' +
     '<button class="btn block" id="qn-save">存起來</button><div id="qn-hist"></div>',
     () => box.querySelector('#qn-in').value.trim() ? '這筆還沒存，確定要關掉嗎？' : null);
   const ta = box.querySelector('#qn-in');
@@ -1523,7 +1530,8 @@ function openQuickNote() {
     if (currentView === 'history') renderers.history();
   });
   renderHist();
-  ta.focus();
+  // 聚焦已經在 openModal 裡、sheet 還在畫面上的時候做過了（見 data-autofocus）。
+  // 這裡再 focus 一次是多餘的，而且時機正好落在 sheet 被挪到畫面外之後。
 }
 
 /* ---------- can't sleep ---------- */
