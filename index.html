@@ -756,6 +756,13 @@ function fitModalVV() {
   veil.style.top = vv.offsetTop + 'px';
   veil.style.height = vv.height + 'px';
   veil.style.bottom = 'auto';
+  // 鍵盤升起時，home indicator 那塊安全區已經被鍵盤蓋住了，但
+  // env(safe-area-inset-bottom) 還是回報 34px，veil 就繼續替它留位——
+  // 結果 sheet 底部和鍵盤之間多出 34px 空隙，看起來像浮在半空中。
+  // 鍵盤在的時候只留 10px（跟左右一致）。用 layout viewport 的高度判斷：
+  // 它不會隨鍵盤縮，只有 visual viewport 會。
+  const kbUp = vv.height < document.documentElement.clientHeight - 80;
+  veil.style.paddingBottom = kbUp ? '10px' : '';
   // sheet 的 max-height 是用 100vh 算的，而 100vh 不會隨鍵盤縮——鍵盤升起時
   // sheet 會長得比可見區還高，頂端（含橫桿與圓角）整片被推出畫面。
   // 所以高度上限也要改用 visual viewport 算，並留 24px 讓上緣露出來。
