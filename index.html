@@ -117,6 +117,8 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
 .card h3{margin:0 0 2px; font-size:15px; font-weight:600}
 .eyebrow{font-size:11.5px; font-weight:600; letter-spacing:.14em; color:var(--accent); margin:0 0 6px}
 .sub{color:var(--ink2); font-size:13.5px; margin:0 0 10px}
+/* sheet 裡的說明下距對齊 Stock（12px）；頁面上的 .sub 維持 10px 不動。 */
+.modal-box .sub{margin-bottom:12px}
 .body-text{color:var(--ink); font-size:14.5px; white-space:pre-wrap}
 .mut{color:var(--muted); font-size:12.5px}
 .divider{border:0; border-top:1px solid var(--line); margin:14px 0}
@@ -302,6 +304,16 @@ input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; 
 .field textarea,.field input[type=text]{width:100%; border:1px solid var(--glass-brd); border-radius:14px;
   background:var(--card); padding:10px 13px; line-height:1.6; resize:vertical;
   box-shadow:inset 0 1px 3px rgba(0,0,0,.06)}
+/* sheet 裡的輸入欄跟 Stock 的搜尋框同一套：拿掉長方形描邊，改用填色來界定
+   範圍（圓角保留 16px——Stock 那個是單行才做成 999px 藥丸，多行套上去會爛）。
+   聚焦仍保留亮環，不然沒有邊框就看不出焦點在哪。 */
+.modal-box .field textarea,.modal-box .field input[type=text]{
+  border:0; border-radius:16px; background:var(--card); padding:13px 18px}
+/* 聚焦跟 Stock 的搜尋框一樣：不畫框、不畫環，改成把填色加重（.075 → .12）。
+   sheet 一打開就會自動聚焦到輸入欄，原本那圈 3px 琥珀亮環會立刻出現，
+   看起來就是「又冒出一個長方形框」。 */
+.modal-box .field textarea:focus,.modal-box .field input:focus{
+  border:0; outline:none; box-shadow:none; background:rgba(255,220,205,.12)}
 .field textarea{min-height:64px}
 .field textarea:focus,.field input:focus{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent)}
 
@@ -416,7 +428,10 @@ details.acc .acc-body{padding:0 16px 14px}
    不會像 transform 那樣把元素提升成合成層而讓毛玻璃失效。 */
 .modal-box{transition:margin-bottom .3s cubic-bezier(.32,.72,0,1)}
 .modal-box.dragging{transition:none}
-.modal-box h2{margin-top:0}
+/* sheet 標題原本沒指定字級，吃到瀏覽器預設的 1.5em＝22.5px——那不是設計值，
+   是漏設。全站卡片標題 .card h2 是 17px，Stock 的搜尋 sheet 也是 17px，
+   這裡跟著對齊，順便把下距對齊 Stock 的 10px。 */
+.modal-box h2{margin:0 0 10px; font-size:17px; font-weight:700; letter-spacing:.02em}
 
 /* ---------- toast ---------- */
 #toast{position:fixed; left:0; right:0; margin-left:auto; margin-right:auto; width:max-content; bottom:calc(106px + env(safe-area-inset-bottom,0px));
