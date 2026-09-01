@@ -193,7 +193,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
 .baract.near{color:var(--accent); font-weight:700}
 .baract svg{position:relative; z-index:1}
 .baract:hover{color:var(--accent)}
-.baract svg{width:30px; height:30px; display:block; fill:none;
+.baract svg{width:30px; height:30px; transition:width .18s ease, height .18s ease; display:block; fill:none;
   stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .baract:focus:not(:focus-visible){outline:none}
 /* 1px 邊框 + 8 + tab 44 + 8 + 1px = 62。Threads 量到 61.3，而且它的圖示只有
@@ -208,9 +208,16 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
   overflow:hidden;
   transition:color .15s;
   position:relative; z-index:1}
-.tab svg{width:30px; height:30px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.tab svg{width:30px; height:30px; transition:width .18s ease, height .18s ease; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .tab.on{color:var(--accent); font-weight:700}
 .tab.near{color:var(--accent); font-weight:700}
+/* 膠囊底下的圖示要縮一階——那是 liquid glass 的一部分：玻璃壓在上面，底下
+   的東西跟著被推小。用 width/height 而不是 transform：transform 會把元素推上
+   合成層，iOS 的 backdrop-filter 就沒了（整條 bar 的毛玻璃都靠它）。
+   拖曳時膠囊在 .near 上、靜止時在 .on 上，兩種都要。 */
+.tab.near svg,
+.baract.near svg,
+.tabbar:not(.dragging) .tab.on svg{width:27px; height:27px}
 /* 拖曳中：高亮跟著膠囊走——膠囊滑到誰身上誰亮，原本選取那顆退回灰 */
 .tabbar.dragging .tab.on:not(.near){color:var(--muted); font-weight:400}
 .tab:hover{color:var(--ink2)}
