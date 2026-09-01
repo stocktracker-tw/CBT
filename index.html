@@ -162,9 +162,6 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
 :root{
   --bargrp:min(440px, calc(100vw - 32px));   /* 整組的左右邊界 */
   --barh:58px;                                /* bar 高＝圓鈕直徑 */
-  --bargap:20px;                              /* 膠囊與圓鈕之間的留白 */
-  /* 膠囊吃掉群組扣掉圓鈕與留白之後的全部寬度：pill + gap + 圓鈕 = 群組寬 */
-  --barpill:calc(var(--bargrp) - var(--barh) - var(--bargap));
   --barbot:max(8px, calc(env(safe-area-inset-bottom,0px) - 8px));
 }
 .tabbar{position:fixed; left:calc(50% - var(--bargrp)/2); right:auto;
@@ -173,7 +170,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
      indicator 的裝置 8px（原 11）。浮動膠囊列本來就會稍微進到安全區裡，
      貼齊安全區邊界反而顯得懸空。max() 保底，避免小螢幕貼到見底。 */
   bottom:var(--barbot); z-index:40;
-  width:var(--barpill);
+  width:var(--bargrp);
   background:var(--glass-strong);
   backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
   border:1px solid var(--glass-brd); border-radius:999px;
@@ -185,46 +182,30 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
     inset -3px -4px 10px -7px rgba(255,255,255,.16),
     inset 0 -1.5px 3px -1px rgba(0,0,0,.42);
   touch-action:none; user-select:none; -webkit-user-select:none}
-/* 右邊那顆獨立圓鈕：跟分頁列同高、同一套玻璃，貼群組右緣。 */
-/* 按壓效果與分頁列的選取膠囊同一套：兩層外觀用 opacity 交叉淡入（linear→radial
-   不能內插，直接換 background 會硬跳），尺寸用 width/height 長大。
-   一樣不用 transform／opacity 位移——合成觸發會讓 backdrop-filter 在 iOS 失效。 */
-.baract{position:fixed; right:calc(50% - var(--bargrp)/2); bottom:var(--barbot);
-  z-index:40; width:var(--barh); height:var(--barh); border-radius:999px;
-  display:flex; align-items:center; justify-content:center; padding:0;
-  background:none; border:0;
-  backdrop-filter:blur(60px) saturate(1.7); -webkit-backdrop-filter:blur(60px) saturate(1.7);
-  color:var(--ink2); cursor:pointer;
-  transition:color .15s, width .18s ease, height .18s ease, margin .18s ease}
-.baract::before,.baract::after{content:""; position:absolute; inset:0;
-  border-radius:inherit; transition:opacity .18s ease; pointer-events:none}
-.baract::before{opacity:1; background:var(--glass-strong);
-  box-shadow:0 18px 44px -16px rgba(0,0,0,.5),
-    0 2px 6px rgba(0,0,0,.26),
-    inset 0 0 0 1px rgba(255,255,255,.10),
-    inset 0 1.5px 0 rgba(255,255,255,.30),
-    inset 3px 4px 10px -6px rgba(255,255,255,.34),
-    inset -3px -4px 10px -7px rgba(255,255,255,.16),
-    inset 0 -1.5px 3px -1px rgba(0,0,0,.42)}
-.baract::after{opacity:0; background:var(--lens-drag);
+/* bar 中間那顆動作鈕：外觀就是一般 icon，跟其他分頁一模一樣的排法與尺寸，
+   只是點下去開 sheet 而不是換頁。所以沒有圓底、沒有自己的玻璃。 */
+.baract{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center;
+  position:relative; background:none; border:none; padding:9px 4px; border-radius:999px;
+  color:var(--muted); cursor:pointer; transition:color .16s}
+/* 按住時浮出來的泡泡＝選取膠囊拖曳時的那一層，尺寸也對齊：膠囊靜止 44px 高、
+   按住長到 60px。這顆按鈕自己就是 44px 高，所以靜止 inset:0（＝44）、按住
+   inset:-8px（＝60），跟膠囊一模一樣。注意 inset 是相對這顆按鈕算的，不是
+   相對 bar 的內容區——照抄膠囊的 6px/-2px 只會得到 32/48。
+   用 opacity 淡入而不是換 background——linear 與 radial gradient 之間 CSS
+   不能內插，直接換會硬跳。 */
+.baract::after{content:""; position:absolute; inset:0 2px; border-radius:999px;
+  opacity:0; pointer-events:none; background:var(--lens-drag);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
     inset 0 1.5px 1px rgba(255,255,255,.5),
     inset 0 -1.5px 2px -1px rgba(0,0,0,.34),
-    0 4px 16px -5px rgba(0,0,0,.5)}
-/* 按住：長大 6px 並換成「中央全透、四周折射亮環」那一層。用負 margin 補償，
-   讓它從中心長大而不是往左上偏（它是靠 right/bottom 定位的）。 */
-/* 膠囊按下時每邊長 8px（44→60，1.36 倍）。圓鈕沒辦法照抄 8px：它已經是
-   整條 bar 的高度，底下只剩 8px 就到螢幕邊（有 home indicator 的機種是
-   26px）。取 6px 是在「看得出來」和「不要頂到螢幕邊」之間的折衷，
-   58→70＝1.21 倍，是原本 1.10 倍的兩倍。 */
-.baract.press{width:calc(var(--barh) + 12px); height:calc(var(--barh) + 12px);
-  margin:0 -6px -6px 0}
-.baract.press::before{opacity:0}
-.baract.press::after{opacity:1}
+    0 4px 16px -5px rgba(0,0,0,.5);
+  transition:opacity .18s ease, inset .18s ease}
+.baract.press{color:var(--ink)}
+.baract.press::after{opacity:1; inset:-8px 2px}
 .baract svg{position:relative; z-index:1}
 .baract:hover{color:var(--accent)}
 .baract svg{width:26px; height:26px; display:block; fill:none;
-  stroke:currentColor; stroke-width:2; stroke-linecap:round}
+  stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .baract:focus:not(:focus-visible){outline:none}
 .tabbar .inner{display:flex; padding:6px; position:relative}
 .tab{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:0;
@@ -504,13 +485,13 @@ html.nativeshell #app{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px)
     <span class="lens" id="tabLens" aria-hidden="true"></span>
     <button class="tab on" data-v="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3.3v2.2M12 18.5v2.2M3.3 12h2.2M18.5 12h2.2M5.9 5.9l1.6 1.6M16.5 16.5l1.6 1.6M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6"/></svg>今日</button>
     <button class="tab" data-v="tools"><svg viewBox="0 0 24 24"><rect x="3.3" y="8.4" width="17.4" height="11.2" rx="2.4"/><path d="M8.8 8.4V6.6a2 2 0 012-2h2.4a2 2 0 012 2v1.8"/><path d="M3.3 13.4h17.4"/><path d="M10.4 11.9h3.2v3.1h-3.2z"/></svg>工具</button>
+    <button class="baract" id="quickNote" aria-label="新增筆記" title="新增筆記">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
     <button class="tab" data-v="history"><svg viewBox="0 0 24 24"><path d="M3.5 19.5h17"/><path d="M4.5 15l4-5.5 3.5 2.7 4.5-6.7 3 3.8"/></svg>紀錄</button>
     <button class="tab" data-v="learn"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15.5H6.5A2.5 2.5 0 004 21z"/><path d="M4 18.5A2.5 2.5 0 016.5 16H20"/></svg>學習</button>
   </div>
 </nav>
-<button class="baract" id="quickNote" aria-label="新增筆記" title="新增筆記">
-  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-</button>
 
 <div id="modal-root"></div>
 <div id="toast" role="status"></div>
@@ -938,6 +919,10 @@ window.addEventListener('resize', updateTabLens);
   }
   tabbarEl.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // 中間那顆動作鈕現在也在 bar 裡面。它不是分頁，按它不能觸發膠囊拖曳——
+    // 而且下面會 setPointerCapture，把後續事件都收到 bar 上，click 就不會
+    // 落在按鈕上了。所以在這裡就讓路。
+    if (e.target.closest('.baract')) return;
     pressing = true; dragging = true;
     lastX = e.clientX;
     // 基準寬度取自目前選取的分頁，而不是膠囊當下的寬度——連續快按時膠囊
