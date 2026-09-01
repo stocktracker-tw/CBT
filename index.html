@@ -160,9 +160,10 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    膠囊貼群組左緣、圓鈕貼群組右緣，中間留白。刻意不用共同的 flex 容器包起來
    ——分頁列是 backdrop-filter 元素，多包一層容器容易連帶影響它的合成層。 */
 :root{
-  --bargrp:min(440px, calc(100vw - 32px));   /* 整組的左右邊界 */
-  --barh:58px;                                /* bar 高＝圓鈕直徑 */
-  --barbot:max(8px, calc(env(safe-area-inset-bottom,0px) - 8px));
+  /* 尺寸對齊 iOS 原生浮動列（量 Threads 的截圖：1179x2556，3x）：
+     高 60.3px、左右邊距各 21px、離螢幕底 22px。以下三個值就是照這組來的。 */
+  --bargrp:min(440px, calc(100vw - 42px));   /* 左右各留 21px */
+  --barbot:max(8px, calc(env(safe-area-inset-bottom,0px) - 12px));
 }
 .tabbar{position:fixed; left:calc(50% - var(--bargrp)/2); right:auto;
   /* iPhone 的 safe-area-inset-bottom 約 34px，跟 11px 相加＝離螢幕底部 45px，
@@ -195,7 +196,8 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
 .baract svg{width:26px; height:26px; display:block; fill:none;
   stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .baract:focus:not(:focus-visible){outline:none}
-.tabbar .inner{display:flex; padding:6px; position:relative}
+/* 內距 7px：1px 邊框 + 7 + tab 44 + 7 + 1px = 60，對齊 Threads 的 60.3。 */
+.tabbar .inner{display:flex; padding:7px; position:relative}
 .tab{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:0;
   /* 高度對齊原生浮動膠囊列：26px icon + 上下 9px = 44px（Apple 的最小觸控
      目標就是 44pt，再矮就不好按）。原本 15px 讓 tab 56px、整條 70px。 */
@@ -214,7 +216,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    打架）＋自己的上緣亮線與內光環＋底緣厚度陰影。不用 backdrop-filter（巢狀玻璃
    會讓 iOS 毛玻璃失效）、不用 transform／will-change（合成觸發同樣會破壞毛玻璃），
    只以 left/width 過場。 */
-.lens{position:absolute; top:6px; bottom:6px; left:6px; width:0; border-radius:999px; z-index:0;
+.lens{position:absolute; top:7px; bottom:7px; left:7px; width:0; border-radius:999px; z-index:0;
   pointer-events:none;
   transition:left .35s cubic-bezier(.32,.72,0,1), width .18s ease,
     top .18s ease, bottom .18s ease, opacity .14s ease}
@@ -242,7 +244,9 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    （合成觸發會讓分頁列的 backdrop-filter 在 iOS 失效），改以
    width（JS 設）＋top/bottom＋上面那兩層的交叉淡入達成同樣觀感。
    速度對齊 iOS 原生（約 .35s，Apple 慣用的 cubic-bezier(.32,.72,0,1)）。 */
-.lens.drag{top:-2px; bottom:-2px}
+/* 44 → 60，每邊 +8。inner 內距是 7px，所以外擴到 -1px 就是 60（內距 6px 的
+   年代這裡寫 -2px）。 */
+.lens.drag{top:-1px; bottom:-1px}
 /* 手指真的在拖的時候要即時跟手，不能有過場延遲——等同 stock tracker 在
    follow() 裡加回 .drag（transition:none）的作用。按下那一下不加這個
    class，所以膠囊會「滑」到按到的分頁，而不是瞬移。
