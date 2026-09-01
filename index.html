@@ -187,21 +187,9 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
 .baract{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center;
   position:relative; background:none; border:none; padding:9px 4px; border-radius:999px;
   color:var(--muted); cursor:pointer; transition:color .16s}
-/* 按住時浮出來的泡泡＝選取膠囊拖曳時的那一層，尺寸也對齊：膠囊靜止 44px 高、
-   按住長到 60px。這顆按鈕自己就是 44px 高，所以靜止 inset:0（＝44）、按住
-   inset:-8px（＝60），跟膠囊一模一樣。注意 inset 是相對這顆按鈕算的，不是
-   相對 bar 的內容區——照抄膠囊的 6px/-2px 只會得到 32/48。
-   用 opacity 淡入而不是換 background——linear 與 radial gradient 之間 CSS
-   不能內插，直接換會硬跳。 */
-.baract::after{content:""; position:absolute; inset:0 2px; border-radius:999px;
-  opacity:0; pointer-events:none; background:var(--lens-drag);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
-    inset 0 1.5px 1px rgba(255,255,255,.5),
-    inset 0 -1.5px 2px -1px rgba(0,0,0,.34),
-    0 4px 16px -5px rgba(0,0,0,.5);
-  transition:opacity .18s ease, inset .18s ease}
-.baract.press{color:var(--ink)}
-.baract.press::after{opacity:1; inset:-8px 2px}
+/* 按住時的外觀完全交給真正的膠囊（.lens）——它會滑過來、放大、變成全透
+   折射環，跟停在任何一個分頁上時一模一樣。這裡不再自己畫一顆泡泡。 */
+.baract.near{color:var(--accent); font-weight:700}
 .baract svg{position:relative; z-index:1}
 .baract:hover{color:var(--accent)}
 .baract svg{width:26px; height:26px; display:block; fill:none;
@@ -841,21 +829,17 @@ const tabbarEl = document.querySelector('.tabbar');
 // 分頁列右邊那顆獨立圓鈕：隨手記一筆。它不是分頁，不進膠囊的計算。
 const quickNoteBtn = document.getElementById('quickNote');
 if (quickNoteBtn) {
-  quickNoteBtn.addEventListener('click', openQuickNote);
-  // 按壓效果與選取膠囊同一套：按下長大＋換成全透折射環，放開還原。
-  // pointercancel／pointerleave 也要收，不然手指滑開會卡在按住的樣子。
-  const pressOn = () => quickNoteBtn.classList.add('press');
-  const pressOff = () => quickNoteBtn.classList.remove('press');
-  quickNoteBtn.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    pressOn();
-  });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
-    quickNoteBtn.addEventListener(ev, pressOff));
+  // 點擊只留給沒有指標事件的情況（鍵盤 Enter／輔助技術）。用指標按的時候
+  // 由 bar 的膠囊邏輯在 pointerup 觸發，見下面的 stops。
+  quickNoteBtn.addEventListener('click', e => { if (e.detail === 0) openQuickNote(); });
 }
 const tabInner = tabbarEl.querySelector('.inner');
 const tabLens = document.getElementById('tabLens');
 const tabBtns = $$('.tab');
+// 膠囊會停的每一站：四個分頁 ＋ 中間那顆動作鈕。動作鈕不是分頁（不進
+// updateTabLens 的「目前選取」計算），但拖曳時膠囊照樣滑得過去、停得住，
+// 手感跟分頁完全一樣——這就是「運作邏輯跟 liquid glass 一樣」的意思。
+const tabStops = $$('.tab, .baract').sort((a, b) => a.offsetLeft - b.offsetLeft);
 // 收尾動畫進行中：膠囊正維持放大＋全透滑向目標分頁，這時不能把它拉回去
 let lensSettling = false;
 function updateTabLens() {
@@ -872,14 +856,14 @@ window.addEventListener('resize', updateTabLens);
     const r = tabInner.getBoundingClientRect();
     const xr = clientX - r.left;
     let best = null, bd = Infinity;
-    tabBtns.forEach(b => {
+    tabStops.forEach(b => {
       const c = b.offsetLeft + b.offsetWidth / 2;
       const d = Math.abs(c - xr);
       if (d < bd) { bd = d; best = b; }
     });
     return best;
   }
-  function clearNear() { tabBtns.forEach(b => b.classList.remove('near')); }
+  function clearNear() { tabStops.forEach(b => b.classList.remove('near')); }
   const STRETCH = 26;               // 拖曳時膠囊放大的像素（水平；垂直由 CSS top/bottom）
   function moveLens(clientX) {
     const r = tabInner.getBoundingClientRect();
@@ -898,7 +882,7 @@ window.addEventListener('resize', updateTabLens);
     tabLens.style.left = (cx - w / 2) + 'px';
     lastX = clientX;
     const nb = nearestTab(clientX);
-    tabBtns.forEach(b => b.classList.toggle('near', b === nb));
+    tabStops.forEach(b => b.classList.toggle('near', b === nb));
   }
   // 按下就放大：膠囊在 pointerdown 當下就進入拖曳外觀（放大＋全透＋折射亮環）
   // 並吸附到按到的那顆分頁中心，和 stock tracker 的 down() 一致。原本要先
@@ -914,15 +898,11 @@ window.addEventListener('resize', updateTabLens);
     const c = b.offsetLeft + b.offsetWidth / 2;
     const L = c - w / 2;
     tabLens.style.left = L + 'px';
-    tabBtns.forEach(t => t.classList.toggle('near', t === b));
+    tabStops.forEach(t => t.classList.toggle('near', t === b));
     return L;
   }
   tabbarEl.addEventListener('pointerdown', e => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    // 中間那顆動作鈕現在也在 bar 裡面。它不是分頁，按它不能觸發膠囊拖曳——
-    // 而且下面會 setPointerCapture，把後續事件都收到 bar 上，click 就不會
-    // 落在按鈕上了。所以在這裡就讓路。
-    if (e.target.closest('.baract')) return;
     pressing = true; dragging = true;
     lastX = e.clientX;
     // 基準寬度取自目前選取的分頁，而不是膠囊當下的寬度——連續快按時膠囊
@@ -969,10 +949,18 @@ window.addEventListener('resize', updateTabLens);
     if (dragging) {
       const nb = nearestTab(e.clientX) || tabInner.querySelector('.tab.on');
       suppressClick = true;
-      settleTo(nb);
-      // 內容立刻換（不等動畫）；updateTabLens 在收尾期間會被 settling 擋掉，
-      // 所以不會把還在滑動的膠囊拉回去
-      if (nb && nb.dataset.v !== currentView) show(nb.dataset.v);
+      // 停在動作鈕上：它不是分頁，不換頁也不留住膠囊——開 sheet，然後讓膠囊
+      // 滑回目前選取的那個分頁。bar 的 setPointerCapture 會吃掉按鈕自己的
+      // click，所以動作要在這裡發。
+      if (nb && nb.classList.contains('baract')) {
+        settleTo(tabInner.querySelector('.tab.on'));
+        openQuickNote();
+      } else {
+        settleTo(nb);
+        // 內容立刻換（不等動畫）；updateTabLens 在收尾期間會被 settling 擋掉，
+        // 所以不會把還在滑動的膠囊拉回去
+        if (nb && nb.dataset.v !== currentView) show(nb.dataset.v);
+      }
     }
     pressing = false; dragging = false;
   });
