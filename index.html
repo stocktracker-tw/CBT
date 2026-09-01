@@ -242,9 +242,22 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
     inset 0 0 0 1px rgba(255,255,255,.14),
     inset 0 -1px 2px -1px rgba(0,0,0,.35),
     0 2px 8px -3px rgba(0,0,0,.4)}
+/* 拖曳時的折射環要分光：真的液態玻璃邊緣會把背後的光拆成冷暖兩側。
+   量 LINE 那張參考圖的膠囊邊緣（3x 截圖、環寬約 5-6px＝2pt）：
+     上緣 rgb(118,241,250) 青、左右 rgb(245,225,94)/rgb(252,199,62) 琥珀、
+     下緣 rgb(66,64,160) 藍紫。
+   所以用四道有方向的 inset 陰影分別畫上／左／右／下，色相就照量到的擺。
+   刻意不用 mask、conic-gradient 疊環或 backdrop-filter 的位移濾鏡——那些會
+   多開合成層，iOS 上整條 bar 的 backdrop-filter 就沒了。box-shadow 純繪製，
+   而且自己會跟著 border-radius 走。清晰的白邊排在最前面（先列的畫在上層），
+   分光壓在它底下，跟真的鏡面高光壓在色散之上是同一個順序。 */
 .lens::after{opacity:0; background:var(--lens-drag);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.34),
-    inset 0 1.5px 1px rgba(255,255,255,.5),
+    inset 0 2px 2.5px -1px rgba(64,214,255,.60),
+    inset 2px 0 2.5px -1px rgba(255,182,56,.52),
+    inset -2px 0 2.5px -1px rgba(255,182,56,.52),
+    inset 0 -2px 2.5px -1px rgba(126,104,255,.58),
+    inset 0 1.5px 1px rgba(255,255,255,.22),
     inset 0 -1.5px 2px -1px rgba(0,0,0,.34),
     0 4px 16px -5px rgba(0,0,0,.5)}
 .lens.drag::before{opacity:0}
