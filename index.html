@@ -219,7 +219,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    打架）＋自己的上緣亮線與內光環＋底緣厚度陰影。不用 backdrop-filter（巢狀玻璃
    會讓 iOS 毛玻璃失效）、不用 transform／will-change（合成觸發同樣會破壞毛玻璃），
    只以 left/width 過場。 */
-.lens{position:absolute; top:6px; bottom:6px; left:8px; width:0; border-radius:999px; z-index:0;
+.lens{position:absolute; top:4px; bottom:4px; left:8px; width:0; border-radius:999px; z-index:0;
   pointer-events:none;
   transition:left .35s cubic-bezier(.32,.72,0,1), width .18s ease,
     top .18s ease, bottom .18s ease, opacity .14s ease}
