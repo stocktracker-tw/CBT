@@ -879,12 +879,11 @@ const tabStops = $$('.tab, .baract').sort((a, b) => a.offsetLeft - b.offsetLeft)
 // 收尾動畫進行中：膠囊正維持放大＋全透滑向目標分頁，這時不能把它拉回去
 let lensSettling = false;
 // 靜止膠囊要比分頁本身寬。分頁寬 64、膠囊高 52，等寬的話長寬比只有 1.23
-// ——讀起來是圓角方塊而不是膠囊。加寬 20 到 84，長寬比 1.62；量參考圖那顆
-// 是 84.3 x 51.5、比例 1.64。實測不會撞到隔壁的 icon。
-// 膠囊左緣會落在「bar 水平留白 − 10」＝ +3，離 bar 外緣 4px，
-// 和參考圖的 4.3pt 餘裕一致。
+// ——讀起來是圓角方塊而不是膠囊。加寬 16 到 80（比例 1.54）。
+// （參考圖那顆是 84.3 x 51.5、比例 1.64；這裡刻意比它窄一點。）
+// 膠囊左緣落在「bar 水平留白 − 8」＝ +5，離 bar 外緣 6px。
 // 按下後的寬度不受這裡影響：那條走 baseW（分頁寬）+ STRETCH。
-const REST_GROW = 20;
+const REST_GROW = 16;
 function updateTabLens() {
   if (lensSettling) return;
   const act = tabInner.querySelector('.tab.on');
