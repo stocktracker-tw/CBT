@@ -893,22 +893,36 @@ window.addEventListener('resize', updateTabLens);
     return best;
   }
   function clearNear() { tabStops.forEach(b => b.classList.remove('near')); }
-  const STRETCH = 26;               // 拖曳時膠囊放大的像素（水平；垂直由 CSS top/bottom）
+  // 拖曳時膠囊放大的像素（水平；垂直由 CSS top/bottom 固定成 64）。
+  // 量參考圖那顆膠囊：104.3 x 64.7pt，長寬比 1.61。我們原本 92 x 64 只有 1.44
+  // ——同樣的高度卻明顯短一截，看起來就是「太窄」。
+  // 64 x 1.61 ≒ 103，分頁寬 66.4 → 放大量 37。
+  const STRETCH = 37;
+  // 膠囊變寬之後，停在頭尾兩顆時會整顆滑出 bar 外（37 的放大量在最左會凸出
+  // 9.5px，看起來像從 bar 裡逃出來的另一顆泡泡）。所以再夾一次「邊緣」：
+  // 最多只准超出 bar 外緣 4px——那是加寬前既有的凸出量，看起來像玻璃微微
+  // 鼓出邊框，而不是跑掉。代價是停在頭尾時 icon 會離膠囊中心 5.5px，
+  // 但在 103 寬的膠囊裡幾乎看不出來，比整顆跑出去好。
+  // .lens 的定位基準是 .inner 的內距盒，bar 外緣在 .inner 座標的 -1，所以是 -5。
+  const OVER = 5;
+  function clampLens(L, w) {
+    const iw = tabInner.clientWidth;
+    return Math.max(-OVER, Math.min(iw - w + OVER, L));
+  }
   function moveLens(clientX) {
     const r = tabInner.getBoundingClientRect();
     if (baseW && tabLens.offsetWidth !== baseW + STRETCH) {
       tabLens.style.width = (baseW + STRETCH) + 'px';
     }
     const w = baseW ? baseW + STRETCH : tabLens.offsetWidth;
-    // 夾限用「膠囊中心」對齊頭尾分頁的中心：放大後的膠囊因此會微微超出
-    // bar 兩端，但拖到底時正好以第一顆／最後一顆 icon 為中心（原本改夾
-    // 膠囊邊緣，拖到底會偏向內側、對不準 icon）
+    // 先夾「膠囊中心」對齊頭尾分頁的中心，拖到底時就以第一顆／最後一顆
+    // icon 為中心；再由 clampLens 夾一次邊緣，限制凸出 bar 的量。
     const first = tabBtns[0], last = tabBtns[tabBtns.length - 1];
     const loC = first.offsetLeft + first.offsetWidth / 2;
     const hiC = last.offsetLeft + last.offsetWidth / 2;
     let cx = clientX - r.left;
     cx = Math.max(loC, Math.min(hiC, cx));
-    tabLens.style.left = (cx - w / 2) + 'px';
+    tabLens.style.left = clampLens(cx - w / 2, w) + 'px';
     lastX = clientX;
     const nb = nearestTab(clientX);
     tabStops.forEach(b => b.classList.toggle('near', b === nb));
@@ -925,7 +939,7 @@ window.addEventListener('resize', updateTabLens);
     const w = baseW + STRETCH;
     tabLens.style.width = w + 'px';
     const c = b.offsetLeft + b.offsetWidth / 2;
-    const L = c - w / 2;
+    const L = clampLens(c - w / 2, w);
     tabLens.style.left = L + 'px';
     tabStops.forEach(t => t.classList.toggle('near', t === b));
     return L;
