@@ -273,11 +273,11 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    （合成觸發會讓分頁列的 backdrop-filter 在 iOS 失效），改以
    width（JS 設）＋top/bottom＋上面那兩層的交叉淡入達成同樣觀感。
    速度對齊 iOS 原生（約 .35s，Apple 慣用的 cubic-bezier(.32,.72,0,1)）。 */
-/* 膠囊要跟著 bar 一起長。bar 這幾輪從 58 長到 62，膠囊卻一直留在 44，比例
-   從 76% 掉到 71%，看起來就縮水了。inner 的內距盒是 60（tab 44 + 內距 16），
-   靜止 inset 6 → 48（佔 bar 77%，貼回最初的 76%）；拖曳 inset -2 → 64，
-   也就是比 bar 高 2px、上下各凸出 1px，跟最初 58/60 的關係一樣。 */
-.lens.drag{top:-2px; bottom:-2px}
+/* 按下的膠囊高度對齊參考圖：量到 64.7pt（該圖的 bar 約 59-61，比例 1.05-1.09；
+   我們的 bar 是 62，兩種算法都落在 65 附近），取 65。
+   inner 的內距盒是 60，所以 inset −2.5 → 65，比 bar 高 3px、上下各凸出 1.5px。
+   按下狀態本來就允許超出 bar。 */
+.lens.drag{top:-2.5px; bottom:-2.5px}
 /* 手指真的在拖的時候要即時跟手，不能有過場延遲——等同 stock tracker 在
    follow() 裡加回 .drag（transition:none）的作用。按下那一下不加這個
    class，所以膠囊會「滑」到按到的分頁，而不是瞬移。
