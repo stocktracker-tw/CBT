@@ -907,7 +907,12 @@ window.addEventListener('resize', updateTabLens);
     return best;
   }
   function clearNear() { tabStops.forEach(b => b.classList.remove('near')); }
-  const STRETCH = 26;               // 拖曳時膠囊放大的像素（水平；垂直由 CSS top/bottom）
+  // 按下時膠囊放大的像素（水平；垂直由 CSS top/bottom 固定成 64）。
+  // 量參考圖那顆按下的膠囊是 104.3 x 64.7pt。分頁寬 64 → 放大量 40 得到 104。
+  // 高度維持 64（參考 64.7，差不到 1px，不值得為它引進半像素定位）。
+  // 停在頭尾兩顆時會凸出 bar 約 6px——按下狀態本來就允許超出 bar，
+  // 所以這裡不夾邊緣；靜止那顆才要留 4px 餘裕（見 REST_GROW）。
+  const STRETCH = 40;
   function moveLens(clientX) {
     const r = tabInner.getBoundingClientRect();
     if (baseW && tabLens.offsetWidth !== baseW + STRETCH) {
