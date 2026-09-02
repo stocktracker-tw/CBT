@@ -200,7 +200,13 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    22px、上下各留 19.5px——留白比圖示本身還寬。我們原本是 26px 圖示擠在同樣
    高度裡，看起來就侷促，侷促讀起來就矮。圖示改 22、tab 內距補到 11（維持
    44px 觸控目標），留白就跟 Threads 一樣是 20/22/20。 */
-.tabbar .inner{display:flex; padding:8px; position:relative}
+/* 水平留白 13 而不是 8。靜止膠囊比分頁寬 18（見 REST_GROW），所以膠囊左緣
+   落在「留白 − 9」的位置——留白 8 時是 −1，正好壓在 bar 的邊框上，讀起來就是
+   膠囊凸出 bar。留白 13 → 膠囊左緣在 +4，離 bar 外緣 5px，和參考圖量到的
+   4.3pt 餘裕一致，而且 icon 仍然正對膠囊中心（參考圖也是置中的）。
+   垂直維持 8：bar 高度 1+8+44+8+1 = 62 不變。
+   代價是分頁從 66 縮成 64——觸控目標仍遠大於 44。 */
+.tabbar .inner{display:flex; padding:8px 13px; position:relative}
 .tab{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:0;
   /* 高度對齊原生浮動膠囊列：26px icon + 上下 9px = 44px（Apple 的最小觸控
      目標就是 44pt，再矮就不好按）。原本 15px 讓 tab 56px、整條 70px。 */
@@ -871,11 +877,13 @@ const tabBtns = $$('.tab');
 const tabStops = $$('.tab, .baract').sort((a, b) => a.offsetLeft - b.offsetLeft);
 // 收尾動畫進行中：膠囊正維持放大＋全透滑向目標分頁，這時不能把它拉回去
 let lensSettling = false;
-// 靜止膠囊要比分頁本身寬。分頁寬 66、膠囊高 52，長寬比只有 1.27——讀起來
-// 是圓角方塊而不是膠囊。加寬 18 到 84，長寬比 1.61，跟參考圖那顆同一個比例。
-// 實測 84 不會撞到隔壁的 icon。
-// 按下後的寬度不受這裡影響：那條走 baseW（分頁寬）+ STRETCH，仍是 92。
-const REST_GROW = 18;
+// 靜止膠囊要比分頁本身寬。分頁寬 64、膠囊高 52，等寬的話長寬比只有 1.23
+// ——讀起來是圓角方塊而不是膠囊。加寬 20 到 84，長寬比 1.62；量參考圖那顆
+// 是 84.3 x 51.5、比例 1.64。實測不會撞到隔壁的 icon。
+// 膠囊左緣會落在「bar 水平留白 − 10」＝ +3，離 bar 外緣 4px，
+// 和參考圖的 4.3pt 餘裕一致。
+// 按下後的寬度不受這裡影響：那條走 baseW（分頁寬）+ STRETCH。
+const REST_GROW = 20;
 function updateTabLens() {
   if (lensSettling) return;
   const act = tabInner.querySelector('.tab.on');
