@@ -182,6 +182,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
     inset 3px 4px 10px -6px rgba(255,255,255,.34),
     inset -3px -4px 10px -7px rgba(255,255,255,.16),
     inset 0 -1.5px 3px -1px rgba(0,0,0,.42);
+  transition:width .18s ease, left .18s ease, bottom .18s ease;
   touch-action:none; user-select:none; -webkit-user-select:none}
 /* bar 中間那顆動作鈕：外觀就是一般 icon，跟其他分頁一模一樣的排法與尺寸，
    只是點下去開 sheet 而不是換頁。所以沒有圓底、沒有自己的玻璃。 */
@@ -206,7 +207,23 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    4.3pt 餘裕一致，而且 icon 仍然正對膠囊中心（參考圖也是置中的）。
    垂直維持 8：bar 高度 1+8+44+8+1 = 62 不變。
    代價是分頁從 66 縮成 64——觸控目標仍遠大於 44。 */
-.tabbar .inner{display:flex; padding:8px 13px; position:relative}
+.tabbar .inner{display:flex; padding:8px 13px; position:relative;
+  transition:padding .18s ease}
+/* 按下時整條 bar 微幅放大。幅度不是憑感覺，是量參考圖來的（3x 截圖）：
+     bar 寬 1060 → 1095px（+3.3%）、高 186 → 194px（+4.3%）
+     圖示墨水高度 56/61/59/50 → 60/64/61/52（平均 +5%）
+   所以這裡 +12 寬、+3 高、圖示 30 → 31.5。
+   一律走 width/height/padding/left/bottom 這些版面屬性——transform 會把 bar
+   推上合成層，iOS 的 backdrop-filter 就沒了。
+   left 與 bottom 要跟著補一半，否則會變成只往右上長，不是「放大」。
+   垂直內距 8.75：圖示 30→31.5 已經把 tab 從 44 撐到 45.5，
+   8.75+45.5+8.75+邊框 2 = 65，剛好是 +3。 */
+.tabbar.dragging{width:calc(var(--bargrp) + 12px);
+  left:calc(50% - (var(--bargrp) + 12px) / 2);
+  bottom:calc(var(--barbot) - 1.5px)}
+.tabbar.dragging .inner{padding:8.75px 13px}
+.tabbar.dragging .tab svg,
+.tabbar.dragging .baract svg{width:31.5px; height:31.5px}
 .tab{flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:0;
   /* 高度對齊原生浮動膠囊列：26px icon + 上下 9px = 44px（Apple 的最小觸控
      目標就是 44pt，再矮就不好按）。原本 15px 讓 tab 56px、整條 70px。 */
@@ -217,13 +234,9 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
 .tab svg{width:30px; height:30px; transition:width .18s ease, height .18s ease; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .tab.on{color:var(--accent); font-weight:700}
 .tab.near{color:var(--accent); font-weight:700}
-/* 膠囊底下的圖示要縮一階——那是 liquid glass 的一部分：玻璃壓在上面，底下
-   的東西跟著被推小。用 width/height 而不是 transform：transform 會把元素推上
-   合成層，iOS 的 backdrop-filter 就沒了（整條 bar 的毛玻璃都靠它）。
-   拖曳時膠囊在 .near 上、靜止時在 .on 上，兩種都要。 */
-.tab.near svg,
-.baract.near svg,
-.tabbar:not(.dragging) .tab.on svg{width:27px; height:27px}
+/* 膠囊底下的圖示不再縮。原本會縮一階（30→27）模擬「玻璃壓下去」，但現在
+   按下時是整條 bar 連同圖示一起微幅放大，兩個方向的縮放疊在一起會互相打架。
+   svg 的 width/height 過場留著——放大要用。 */
 /* 拖曳中：高亮跟著膠囊走——膠囊滑到誰身上誰亮，原本選取那顆退回灰 */
 .tabbar.dragging .tab.on:not(.near){color:var(--muted); font-weight:400}
 .tab:hover{color:var(--ink2)}
@@ -278,7 +291,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    6px，不然看起來是被壓扁的橢圓，而不是一顆脹出來的玻璃。
    inner 的內距盒是 60、又內縮在 1px 邊框裡，所以 inset −7 → 74，上下各凸出 6px。
    註：這比參考圖那顆的 64.7 高，是刻意的——凸出對稱優先於絕對高度。 */
-.lens.drag{top:-7px; bottom:-7px}
+.lens.drag{top:.5px; bottom:.5px}
 /* 手指真的在拖的時候要即時跟手，不能有過場延遲——等同 stock tracker 在
    follow() 裡加回 .drag（transition:none）的作用。按下那一下不加這個
    class，所以膠囊會「滑」到按到的分頁，而不是瞬移。
@@ -912,7 +925,7 @@ window.addEventListener('resize', updateTabLens);
   // 高度維持 64（參考 64.7，差不到 1px，不值得為它引進半像素定位）。
   // 停在頭尾兩顆時會凸出 bar 約 6px——按下狀態本來就允許超出 bar，
   // 所以這裡不夾邊緣；靜止那顆才要留 4px 餘裕（見 REST_GROW）。
-  const STRETCH = 40;
+  const STRETCH = 28;
   function moveLens(clientX) {
     const r = tabInner.getBoundingClientRect();
     if (baseW && tabLens.offsetWidth !== baseW + STRETCH) {
@@ -983,6 +996,11 @@ window.addEventListener('resize', updateTabLens);
     tabbarEl.classList.remove('dragging');
     clearNear();
     updateTabLens();
+    // 拿掉 .dragging 之後 bar 還要 .18s 才縮回原尺寸，而 updateTabLens 是
+    // 從分頁的當下 rect 算膠囊的，這一刻讀到的是縮到一半的中間值——膠囊
+    // 會停在錯的大小與位置（實測放開後是 82x54、上下不對稱）。等過場結束
+    // 再算一次就對了。
+    setTimeout(updateTabLens, 200);
   }
   function settleTo(nb) {
     tabLens.classList.remove('tracking');   // 打開過場，讓它滑過去
