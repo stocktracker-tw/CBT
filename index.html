@@ -291,7 +291,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    6px，不然看起來是被壓扁的橢圓，而不是一顆脹出來的玻璃。
    inner 的內距盒是 60、又內縮在 1px 邊框裡，所以 inset −7 → 74，上下各凸出 6px。
    註：這比參考圖那顆的 64.7 高，是刻意的——凸出對稱優先於絕對高度。 */
-.lens.drag{top:.5px; bottom:.5px}
+.lens.drag{top:-5px; bottom:-5px}
 /* 手指真的在拖的時候要即時跟手，不能有過場延遲——等同 stock tracker 在
    follow() 裡加回 .drag（transition:none）的作用。按下那一下不加這個
    class，所以膠囊會「滑」到按到的分頁，而不是瞬移。
@@ -925,7 +925,11 @@ window.addEventListener('resize', updateTabLens);
   // 高度維持 64（參考 64.7，差不到 1px，不值得為它引進半像素定位）。
   // 停在頭尾兩顆時會凸出 bar 約 6px——按下狀態本來就允許超出 bar，
   // 所以這裡不夾邊緣；靜止那顆才要留 4px 餘裕（見 REST_GROW）。
-  const STRETCH = 28;
+  // 按下時膠囊要凸出 bar。量參考圖：凸出上下各 12px = 4.0pt（靜止則完全不凸）。
+  // 按下的 bar 是 65 高、.inner 內距盒 63，inset −5 → 73，上下各凸出 4。
+  // 寬度同樣給 4：按下的 bar 360、分頁 66.4，第一顆中心在 46.2，
+  // 要凸出 4 需 W/2 − 47.2 = 4 → W = 102.4。baseW 是按下當下的 64 → 38。
+  const STRETCH = 38;
   function moveLens(clientX) {
     const r = tabInner.getBoundingClientRect();
     if (baseW && tabLens.offsetWidth !== baseW + STRETCH) {
