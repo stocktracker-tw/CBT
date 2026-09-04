@@ -164,6 +164,12 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
      高 60.3px、左右邊距各 21px、離螢幕底 22px。以下三個值就是照這組來的。 */
   --bargrp:min(440px, calc(100vw - 42px));   /* 左右各留 21px */
   --barbot:max(8px, calc(env(safe-area-inset-bottom,0px) - 12px));
+  /* 按下手勢裡每一樣會動的東西共用同一條曲線與同一個時長。原本 bar 與膠囊
+     尺寸走 ease（cubic-bezier(.25,.1,.25,1)，起步是慢的），膠囊位置卻走
+     iOS 的 cubic-bezier(.32,.72,0,1)（起步很快再減速）——同一個手勢裡兩種
+     個性，位置已經彈開了尺寸才剛要起步，讀起來就是不滑順。統一成後者。 */
+  --ease:cubic-bezier(.32,.72,0,1);
+  --press:.22s;
 }
 .tabbar{position:fixed; left:calc(50% - var(--bargrp)/2); right:auto;
   /* iPhone 的 safe-area-inset-bottom 約 34px，跟 11px 相加＝離螢幕底部 45px，
@@ -182,7 +188,8 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
     inset 3px 4px 10px -6px rgba(255,255,255,.34),
     inset -3px -4px 10px -7px rgba(255,255,255,.16),
     inset 0 -1.5px 3px -1px rgba(0,0,0,.42);
-  transition:width .18s ease, left .18s ease, bottom .18s ease;
+  transition:width var(--press) var(--ease), left var(--press) var(--ease),
+    bottom var(--press) var(--ease);
   touch-action:none; user-select:none; -webkit-user-select:none}
 /* bar 中間那顆動作鈕：外觀就是一般 icon，跟其他分頁一模一樣的排法與尺寸，
    只是點下去開 sheet 而不是換頁。所以沒有圓底、沒有自己的玻璃。 */
@@ -194,7 +201,9 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
 .baract.near{color:var(--accent); font-weight:700}
 .baract svg{position:relative; z-index:1}
 .baract:hover{color:var(--accent)}
-.baract svg{width:30px; height:30px; transition:width .18s ease, height .18s ease; display:block; fill:none;
+.baract svg{width:30px; height:30px;
+  transition:width var(--press) var(--ease), height var(--press) var(--ease);
+  display:block; fill:none;
   stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .baract:focus:not(:focus-visible){outline:none}
 /* 1px 邊框 + 8 + tab 44 + 8 + 1px = 62。Threads 量到 61.3，而且它的圖示只有
@@ -208,7 +217,7 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    垂直維持 8：bar 高度 1+8+44+8+1 = 62 不變。
    代價是分頁從 66 縮成 64——觸控目標仍遠大於 44。 */
 .tabbar .inner{display:flex; padding:8px 13px; position:relative;
-  transition:padding .18s ease}
+  transition:padding var(--press) var(--ease)}
 /* 按下時整條 bar 微幅放大。幅度不是憑感覺，是量參考圖來的（3x 截圖）：
      bar 寬 1060 → 1095px（+3.3%）、高 186 → 194px（+4.3%）
      圖示墨水高度 56/61/59/50 → 60/64/61/52（平均 +5%）
@@ -231,7 +240,9 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
   overflow:hidden;
   transition:color .15s;
   position:relative; z-index:1}
-.tab svg{width:30px; height:30px; transition:width .18s ease, height .18s ease; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.tab svg{width:30px; height:30px;
+  transition:width var(--press) var(--ease), height var(--press) var(--ease);
+  stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 .tab.on{color:var(--accent); font-weight:700}
 .tab.near{color:var(--accent); font-weight:700}
 /* 膠囊底下的圖示不再縮。原本會縮一階（30→27）模擬「玻璃壓下去」，但現在
@@ -247,15 +258,15 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    只以 left/width 過場。 */
 .lens{position:absolute; top:4px; bottom:4px; left:8px; width:0; border-radius:999px; z-index:0;
   pointer-events:none;
-  transition:left .35s cubic-bezier(.32,.72,0,1), width .18s ease,
-    top .18s ease, bottom .18s ease, opacity .14s ease}
+  transition:left .35s var(--ease), width var(--press) var(--ease),
+    top var(--press) var(--ease), bottom var(--press) var(--ease)}
 /* 靜止外觀與拖曳外觀各自一層，用 opacity 交叉淡入，而不是換 background。
    CSS 不能在 linear-gradient 和 radial-gradient 之間內插（box-shadow 清單長度
    不同也一樣），直接切 background 的話外觀會在第一格就硬跳完、尺寸卻還要
    .18s 才長好——兩件事完全不同步，那就是「變化的瞬間」看起來卡的原因。
    交叉淡入之後，外觀和尺寸走同一條 .18s 曲線。 */
 .lens::before,.lens::after{content:""; position:absolute; inset:0;
-  border-radius:inherit; transition:opacity .18s ease}
+  border-radius:inherit; transition:opacity var(--press) var(--ease)}
 .lens::before{opacity:1; background:var(--lens);
   box-shadow:inset 0 1.5px 0 rgba(255,255,255,.30),
     inset 0 0 0 1px rgba(255,255,255,.14),
@@ -297,7 +308,12 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    class，所以膠囊會「滑」到按到的分頁，而不是瞬移。
    只停掉膠囊自己的幾何過場；兩層外觀的交叉淡入要留著，不然按下後
    馬上滑動的話，外觀又會變回瞬間硬跳。 */
-.lens.tracking{transition:none}
+/* 只關掉 left，尺寸的過場要留著。transition 是簡寫，寫 transition:none 會把
+   width/top/bottom 一起關掉——於是「按下就馬上拖」時膠囊會在一格之內從
+   80 硬跳到 102（逐格量到 Δ22），而手指按在螢幕上幾乎一定會有一兩個 px 的
+   位移，等於幾乎每一次點按都在 pop。left 設 0s 跟手，其餘照常長大。 */
+.lens.tracking{transition:left 0s, width var(--press) var(--ease),
+  top var(--press) var(--ease), bottom var(--press) var(--ease)}
 @media (prefers-reduced-motion: reduce){
   .lens,.lens::before,.lens::after{transition:none}
 }
@@ -897,15 +913,27 @@ let lensSettling = false;
 // 膠囊左緣落在「bar 水平留白 − 8」＝ +5，離 bar 外緣 6px。
 // 按下後的寬度不受這裡影響：那條走 baseW（分頁寬）+ STRETCH。
 const REST_GROW = 16;
+// 靜止時每一站的幾何，開場與 resize 各量一次。收尾時「不能」現場量：拿掉
+// .dragging 之後 bar 還要一整段過場才縮回原尺寸，那一刻讀到的 offsetLeft／
+// offsetWidth 是縮到一半的中間值。逐格追蹤過：膠囊會先滑到 82.8 停住，
+// 200ms 後才又縮到 80——放開時看到的是「落地兩次」，這就是不夠滑順的來源。
+// 改成用靜止幾何當目標，膠囊一次就走到位，而且和 bar 的收縮同時落地。
+let restGeom = null;
+function measureRest() {
+  if (tabbarEl.classList.contains('dragging')) return;
+  restGeom = tabStops.map(b => ({ el: b, l: b.offsetLeft, w: b.offsetWidth }));
+}
 function updateTabLens() {
   if (lensSettling) return;
   const act = tabInner.querySelector('.tab.on');
   if (!act) return;
-  const w = act.offsetWidth + REST_GROW;
+  const g = (restGeom || []).find(x => x.el === act) ||
+    { l: act.offsetLeft, w: act.offsetWidth };
+  const w = g.w + REST_GROW;
   tabLens.style.width = w + 'px';
-  tabLens.style.left = (act.offsetLeft + act.offsetWidth / 2 - w / 2) + 'px';
+  tabLens.style.left = (g.l + g.w / 2 - w / 2) + 'px';
 }
-window.addEventListener('resize', updateTabLens);
+window.addEventListener('resize', () => { measureRest(); updateTabLens(); });
 (function () {
   let pressing = false, dragging = false, suppressClick = false, lastX = 0, baseW = 0;
   function nearestTab(clientX) {
@@ -999,12 +1027,9 @@ window.addEventListener('resize', updateTabLens);
     tabLens.classList.remove('drag');
     tabbarEl.classList.remove('dragging');
     clearNear();
+    // 目標取自 restGeom（靜止幾何），不是當下的 rect，所以這一次就是最終值：
+    // 膠囊與 bar 走同一條曲線、同一個時長，一起落地，不會再補第二段。
     updateTabLens();
-    // 拿掉 .dragging 之後 bar 還要 .18s 才縮回原尺寸，而 updateTabLens 是
-    // 從分頁的當下 rect 算膠囊的，這一刻讀到的是縮到一半的中間值——膠囊
-    // 會停在錯的大小與位置（實測放開後是 82x54、上下不對稱）。等過場結束
-    // 再算一次就對了。
-    setTimeout(updateTabLens, 200);
   }
   function settleTo(nb) {
     tabLens.classList.remove('tracking');   // 打開過場，讓它滑過去
@@ -1860,6 +1885,7 @@ renderers.learn = function () {
 applyTheme();
 updateStreakBadge();
 renderers.today();
+measureRest();
 updateTabLens();
 (function () {
   const logoEl = document.getElementById('brandLogo');
