@@ -1,0 +1,20 @@
+{
+  "name": "Mindrise 心晴 · CBT 自助練習",
+  "short_name": "Mindrise",
+  "display": "standalone",
+  "start_url": ".",
+  "background_color": "#0D0812",
+  "theme_color": "#0D0812",
+  "icons": [
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
