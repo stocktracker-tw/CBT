@@ -519,7 +519,7 @@ html.nativeshell #app{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px)
 <div id="app">
   <header class="top">
     <div class="brand-row">
-      <img class="logo" id="brandLogo" src="icon-180.png" alt="Mindrise">
+      <img class="logo" id="brandLogo" src="logo-114.webp" width="38" height="38" alt="Mindrise">
       <div class="brand">心晴<small>MINDRISE · CBT 每日練習</small></div>
     </div>
     <div class="streak-chip" id="streakBadge"><span class="dot"></span><span id="streakText">開始第一天</span></div>
@@ -1887,5 +1887,23 @@ renderers.today();
 measureRest();
 updateTabLens();
 </script>
+<script id="swreg">/* 註冊 service worker。第二次之後開啟就是從快取吃，不必再把
+   161 KB 的 index.html 重抓一次；內容更新靠 sw.js 的背景回填，下一次開啟生效。
+   第一次造訪等 load 再註冊，免得註冊＋預快取回頭跟首屏搶頻寬；已經有
+   controller（代表這一頁本來就是快取吐出來的、網路是閒的）就馬上註冊。 */
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+  function chk() {
+    try {
+      navigator.serviceWorker.getRegistration()
+        .then(function (r) { if (r) r.update(); }).catch(function () {});
+    } catch (e) {}
+  }
+  function reg() { navigator.serviceWorker.register("sw.js").then(chk).catch(function () {}); }
+  if (navigator.serviceWorker.controller) reg();
+  else addEventListener("load", reg);
+  // PWA 常常一開就好幾天不關，回到前景時主動問一次有沒有新版
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) chk(); });
+})();</script>
 </body>
 </html>
