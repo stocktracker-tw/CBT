@@ -293,6 +293,20 @@ textarea,input,select{font-family:inherit; font-size:16px; color:var(--ink)}
    位移，等於幾乎每一次點按都在 pop。left 設 0s 跟手，其餘照常長大。 */
 .lens.tracking{transition:left 0s, width var(--press) var(--ease),
   top var(--press) var(--ease), bottom var(--press) var(--ease)}
+/* 收尾那一步（endSettle）：膠囊從放大的 102 縮回靜止的 80，為了讓中心停在
+   icon 正上方，left 必須同時往右補 11px＝(102−80)/2。補正本身是對的，問題是
+   時長不一致：left 的基礎過場是 .35s，width 是 --press(.22s)——同一個動作用兩種
+   時長，寬度早就縮好了，中心還在慢慢飄。
+   逐項量過（CPU ×4、六次點按）：一次點按的 left 過場會被拆成兩段（第二段在
+   +190ms 重新開始），CSS 寫 .35s 的滑動實測跑了 573ms 中位數，最後那 11px
+   自己佔掉 350ms。收尾這一步把 left 也改成 --press，寬度和中心就一起落地。 */
+.lens.settle{transition:left var(--press) var(--ease), width var(--press) var(--ease),
+  top var(--press) var(--ease), bottom var(--press) var(--ease)}
+/* 只在 measureRest() 裡「同步量一次按下後的幾何」那一瞬間掛上，整段在同一個
+   task 內完成，中間不會有任何一格被畫出來。
+   用 transition-duration 而不是 transition 簡寫——簡寫會把 left/width/top/bottom
+   一起清掉，這支檔案為了這件事已經吃過一次虧（見 .lens.tracking 的註解）。 */
+.tabbar.nofx,.tabbar.nofx *{transition-duration:0s!important}
 @media (prefers-reduced-motion: reduce){
   .lens,.lens::before,.lens::after{transition:none}
 }
@@ -917,10 +931,27 @@ const REST_GROW = 16;
 // offsetWidth 是縮到一半的中間值。逐格追蹤過：膠囊會先滑到 82.8 停住，
 // 200ms 後才又縮到 80——放開時看到的是「落地兩次」，這就是不夠滑順的來源。
 // 改成用靜止幾何當目標，膠囊一次就走到位，而且和 bar 的收縮同時落地。
-let restGeom = null;
+let restGeom = null, dragGeom = null;
 function measureRest() {
   if (tabbarEl.classList.contains('dragging')) return;
   restGeom = tabStops.map(b => ({ el: b, l: b.offsetLeft, w: b.offsetWidth }));
+  // 按下時 bar 會變寬（.tabbar.dragging），分頁中心跟著往右位移。實測按住不放
+  // 時膠囊中心離 icon：今日 −1.2、工具 −3.6、紀錄 −8.4、學習 −10.8px，把那條
+  // 變寬規則關掉就四顆全部歸零——也就是說偏移完全來自它。
+  // 原因是 snapLens 在 pointerdown 當下讀 offsetLeft，那一刻 bar 根本還沒開始
+  // 長；等它長好，目標中心已經不是當初算的那個了，膠囊卻不會再回頭修正。
+  // 所以這裡先把「長好之後」的幾何也量起來，按下時直接拿它當目標。
+  // 拿掉的順序很要緊：.dragging 必須在 .nofx 還在的時候先拿掉，並且當場逼出
+  // 一次 layout。過場要不要跑，看的是「變更之後」那份樣式的 transition-duration
+  // ——兩個 class 一起拿掉的話，變更後的樣式已經是正常時長，於是瀏覽器真的會
+  // 從「變寬」動畫回「沒變寬」。第一版就是這樣寫的，實測每次開啟 bar 都會從
+  // 360 縮到 348、花掉約 260ms，肉眼看得見。
+  tabbarEl.classList.add('nofx');
+  tabbarEl.classList.add('dragging');
+  dragGeom = tabStops.map(b => ({ el: b, l: b.offsetLeft, w: b.offsetWidth }));
+  tabbarEl.classList.remove('dragging');
+  tabbarEl.offsetWidth;            // 在 nofx 還在時把「拿掉」定案：0s，不會起過場
+  tabbarEl.classList.remove('nofx');
 }
 function updateTabLens() {
   if (lensSettling) return;
@@ -987,7 +1018,11 @@ window.addEventListener('resize', () => { measureRest(); updateTabLens(); });
     // 是放大前的值，夾限會鬆掉整整一個 STRETCH，頭尾分頁就凸出去了
     const w = baseW + STRETCH;
     tabLens.style.width = w + 'px';
-    const c = b.offsetLeft + b.offsetWidth / 2;
+    // 中心取自「bar 變寬之後」的幾何（見 measureRest）。現場讀 offsetLeft 在
+    // pointerdown 那一刻是還沒變寬的值、在變寬途中是長到一半的中間值，
+    // 兩種都會讓膠囊停在 icon 旁邊而不是正上方。
+    const dg = (dragGeom || []).find(x => x.el === b);
+    const c = dg ? dg.l + dg.w / 2 : b.offsetLeft + b.offsetWidth / 2;
     const L = c - w / 2;
     tabLens.style.left = L + 'px';
     tabStops.forEach(t => t.classList.toggle('near', t === b));
@@ -1020,18 +1055,34 @@ window.addEventListener('resize', () => { measureRest(); updateTabLens(); });
   // 原生的節奏。代價是「變化完全在 icon 上方」放寬成「後半段在 icon 上方」。
   const GLIDE_MS = 175;      // .lens.drag 的 left 是 .35s，取一半
   const SETTLE_MS = 100;     // 原地放開（沒有位移）時的收尾等待
-  let settleTimer = 0;
+  // 跟 CSS 的 --press 綁在一起讀，改一邊不會忘了另一邊
+  const PRESS_MS = (function () {
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--press').trim();
+    const n = parseFloat(v);
+    if (!n) return 220;
+    return /ms$/.test(v) ? n : n * 1000;
+  })();
+  let settleTimer = 0, settleClassTimer = 0;
   function endSettle() {
     lensSettling = false;
     tabLens.classList.remove('drag');
     tabbarEl.classList.remove('dragging');
     clearNear();
+    // 這一步的 left 是「縮回原寬時的置中補正」，要和 width 同時長才會一起
+    // 落地（見 .lens.settle）。用完就拿掉，不然下一次的滑動會跟著變成 .22s。
+    tabLens.classList.add('settle');
+    clearTimeout(settleClassTimer);
+    settleClassTimer = setTimeout(function () {
+      tabLens.classList.remove('settle');
+    }, PRESS_MS + 40);
     // 目標取自 restGeom（靜止幾何），不是當下的 rect，所以這一次就是最終值：
     // 膠囊與 bar 走同一條曲線、同一個時長，一起落地，不會再補第二段。
     updateTabLens();
   }
   function settleTo(nb) {
     tabLens.classList.remove('tracking');   // 打開過場，讓它滑過去
+    clearTimeout(settleClassTimer);
+    tabLens.classList.remove('settle');   // 這一段要用 .35s 的滑動，不是收尾的 .22s
     const before = tabLens.offsetLeft;
     const L = snapLens(nb);                  // 仍在 .drag：全程維持放大＋全透
     const travel = L === null ? 0 : Math.abs(L - before);
