@@ -640,12 +640,22 @@ function sanitizeData(d) {
   return out;
 }
 function loadData() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return DEFAULT_DATA();
+    raw = localStorage.getItem(STORE_KEY);
+  } catch (e) {
+    storageOk = false;                 // 真的讀不到儲存空間（隱私模式、被停用）
+    return DEFAULT_DATA();
+  }
+  if (!raw) return DEFAULT_DATA();
+  try {
     return sanitizeData(JSON.parse(raw));
   } catch (e) {
-    storageOk = false;
+    // 內容壞掉，但儲存空間本身是好的——兩件事要分開。以前兩種都走同一個
+    // catch：storageOk 被設成 false（引導完的今日頁會誤報「無法保存資料」），
+    // 而且畫面直接當成新使用者，按下「開始吧」的那次 save() 就把原本那份永久
+    // 蓋掉。現在先把讀不出來的原文另存一份再從頭開始，至少救得回來。
+    try { localStorage.setItem(STORE_KEY + '.corrupt.' + Date.now(), raw); } catch (e2) {}
     return DEFAULT_DATA();
   }
 }
@@ -752,7 +762,13 @@ function attachSheetDrag(box, grab) {
 /* ================= modal ================= */
 let modalGuard = null, lastFocused = null;
 function openModal(html, guard) {
-  closeModal();
+  // 換成新的 sheet 時，舊的「直接」清掉，不播退場動畫。
+  // 退場動畫那條路是「先標 closingModal、260ms 後再清空 #modal-root」——走那條的
+  // 話，260ms 後被清掉的會是「剛畫好的這張新 sheet」。思考紀錄每一步、評估的
+  // 結果頁、睡不著裡的「腦內傾倒／呼吸練習」都是在 sheet 開著時再 openModal，
+  // 實測按「下一步」後第二步只出現約 200ms 就整張消失，一筆思考紀錄都存不了
+  // （#39 加上滑出動畫時引進）。
+  closeModal(true);
   modalGuard = guard || null;
   lastFocused = document.activeElement;
   const root = $('#modal-root');
@@ -830,19 +846,25 @@ function fitModalVV() {
   }
 }
 let closingModal = false;
-function closeModal() {
+let closeModalTimer = 0;
+function closeModal(now) {
   const veil = document.querySelector('.modal-veil');
   const bx = veil && veil.querySelector('.modal-box');
-  if (veil && bx && !closingModal) {          // 先播退場動畫，跑完再真的清掉
+  if (!now && veil && bx && !closingModal) {  // 先播退場動畫，跑完再真的清掉
     closingModal = true;
     veil.classList.remove('shown');
     bx.classList.remove('dragging');
     bx.style.marginBottom = -(bx.offsetHeight + 40) + 'px';
     // 這裡刻意「不」先把旗標放掉：留著 true，260ms 後再進來才會走到真正的清理，
     // 否則會一直重新播退場動畫、永遠關不掉（實測 sheet 不會消失）。
-    setTimeout(closeModal, 260);
+    // 計時器要記下來：這 260ms 內如果有人 openModal，得把它取消，不然它醒來
+    // 清掉的就是新的那張（見 openModal）。
+    clearTimeout(closeModalTimer);
+    closeModalTimer = setTimeout(() => closeModal(true), 260);
     return;
   }
+  clearTimeout(closeModalTimer);
+  closeModalTimer = 0;
   closingModal = false;
   const bx0 = document.querySelector('.modal-box');
   if (bx0) bx0.style.maxHeight = '';
@@ -1682,10 +1704,17 @@ function openFiveMin() {
     '<div class="timer-big" id="fm-time">5:00</div>' +
     '<div class="step-nav"><button class="btn ghost" id="fm-reset">重設</button><button class="btn ghost" id="fm-done">提前做完了</button><button class="btn" id="fm-go">開始</button></div>' +
     '<p class="mut" style="text-align:center;margin-top:8px">提早停下也算成功——開始本身就是勝利。</p>');
-  let left = 300, running = false;
+  // credited：這一輪已經記過成就了。沒有這個旗標時，「提前做完了」每按一次就多記
+  // 一筆——手機上連點兩下就是兩筆，計時跑完自動記過之後再按也會再記一筆（實測
+  // 連點 90ms 從 0 變 2）。記過就把按鈕停用，開始下一輪或按「重設」才打開。
+  let left = 300, running = false, credited = false;
   const timeEl = box.querySelector('#fm-time'), goBtn = box.querySelector('#fm-go');
+  const doneBtn = box.querySelector('#fm-done');
   const draw = () => { timeEl.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); };
   const credit = () => {
+    if (credited) return false;
+    credited = true;
+    doneBtn.disabled = true;
     clearActiveTimer(); running = false;
     const goal = box.querySelector('#fm-goal').value.trim() || '五分鐘啟動';
     D.activities.unshift({ id: uid(), date: todayKey(), text: goal, type: 'win', done: true });
@@ -1693,21 +1722,21 @@ function openFiveMin() {
     timeEl.textContent = '完成！';
     goBtn.textContent = '再來五分鐘';
     left = 300;
+    return true;
   };
-  box.querySelector('#fm-done').addEventListener('click', () => { credit(); toast('做到了就算數——已記入你的成就清單'); });
+  const rearm = () => { credited = false; doneBtn.disabled = false; };
+  doneBtn.addEventListener('click', () => { if (credit()) toast('做到了就算數——已記入你的成就清單'); });
   goBtn.addEventListener('click', () => {
     if (running) { clearActiveTimer(); running = false; goBtn.textContent = '繼續'; return; }
+    if (credited) { rearm(); draw(); }   // 「再來五分鐘」＝新的一輪
     running = true; goBtn.textContent = '暫停';
     clearActiveTimer();
     activeTimer = setInterval(() => {
       left--; draw();
-      if (left <= 0) {
-        credit();
-        toast('五分鐘做到了——已記入你的成就清單');
-      }
+      if (left <= 0 && credit()) toast('五分鐘做到了——已記入你的成就清單');
     }, 1000);
   });
-  box.querySelector('#fm-reset').addEventListener('click', () => { clearActiveTimer(); running = false; left = 300; draw(); goBtn.textContent = '開始'; });
+  box.querySelector('#fm-reset').addEventListener('click', () => { clearActiveTimer(); running = false; left = 300; rearm(); draw(); goBtn.textContent = '開始'; });
 }
 
 /* ================= HISTORY view ================= */
