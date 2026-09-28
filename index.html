@@ -1937,24 +1937,96 @@ updateStreakBadge();
 renderers.today();
 measureRest();
 updateTabLens();
+// 換版重載前記下的位置（見 swreg 的 apply()）：回到原本那個分頁、捲回原本
+// 的位置——換版看起來只是畫面更新了一下，而不是被踢回首頁。
+// 放 30 分鐘：切走 app 時觸發的重載，iOS 有可能把它凍住、等下次切回來才跑完。
+(function () {
+  let r = null;
+  try {
+    r = JSON.parse(sessionStorage.getItem('mr-resume') || 'null');
+    sessionStorage.removeItem('mr-resume');
+  } catch (e) {}
+  if (!r || !(Date.now() - r.at < 30 * 60 * 1000)) return;
+  if (r.v && r.v !== currentView && renderers[r.v]) show(r.v);
+  if (r.y > 0) window.scrollTo(0, r.y);
+})();
 </script>
-<script id="swreg">/* 註冊 service worker。第二次之後開啟就是從快取吃，不必再把
-   161 KB 的 index.html 重抓一次；內容更新靠 sw.js 的背景回填，下一次開啟生效。
+<script id="swreg">/* 註冊 service worker，並在有新版時挑「不會打斷人」的時機換上。
+
    第一次造訪等 load 再註冊，免得註冊＋預快取回頭跟首屏搶頻寬；已經有
-   controller（代表這一頁本來就是快取吐出來的、網路是閒的）就馬上註冊。 */
+   controller（代表這一頁本來就是快取吐出來的、網路是閒的）就馬上註冊。
+
+   換版：頁面一載好就問 SW「我這份是不是舊的？」（sw.js 會比對內容雜湊）。
+   以前新版要等「下一次開啟」才看得到，PWA 一開就是好幾天，實際上等於要把
+   app 滑掉重開兩次。現在分三種情況：
+     1. 剛開（或剛切回前景）2.5 秒內、還沒碰任何東西 → 馬上換。這時畫面上
+        什麼都還沒開始，看起來就只是 app 剛載好。
+     2. 已經在用了 → 記著，等切走 app 的那一刻換；下次切回來就是新版。
+     3. 有 sheet 開著、游標在輸入框、打了字還沒送出、計時練習在跑 → 不換，
+        留給下一個安全的時機。這支 app 沒有草稿自動儲存，打到一半的字只存在
+        畫面上，重載就沒了——這條是硬規則，寧可晚換也不能吃掉使用者寫的東西。
+   換之前記下所在分頁與捲動位置，換完由 init 放回原位。 */
 (function () {
   if (!("serviceWorker" in navigator)) return;
+  var sw = navigator.serviceWorker;
   function chk() {
-    try {
-      navigator.serviceWorker.getRegistration()
-        .then(function (r) { if (r) r.update(); }).catch(function () {});
-    } catch (e) {}
+    try { sw.getRegistration().then(function (r) { if (r) r.update(); }).catch(function () {}); }
+    catch (e) {}
   }
-  function reg() { navigator.serviceWorker.register("sw.js").then(chk).catch(function () {}); }
-  if (navigator.serviceWorker.controller) reg();
+  function reg() { sw.register("sw.js").then(chk).catch(function () {}); }
+  if (sw.controller) reg();
   else addEventListener("load", reg);
-  // PWA 常常一開就好幾天不關，回到前景時主動問一次有沒有新版
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) chk(); });
+
+  var served = null, pending = false, touched = false, shownAt = Date.now();
+  // 使用者動過的輸入欄位。還接在畫面上的就算「可能還沒存」——存檔之後
+  // 各頁都會重畫（innerHTML）或關掉 sheet，舊的欄位就自然脫離了。
+  var edited = [];
+  addEventListener("input", function (e) {
+    if (e.target && edited.indexOf(e.target) < 0) edited.push(e.target);
+  }, true);
+  ["pointerdown", "keydown", "touchstart"].forEach(function (t) {
+    addEventListener(t, function () { touched = true; }, { capture: true, passive: true });
+  });
+  function busy() {
+    if (document.querySelector("#modal-root .modal-veil")) return true;
+    var a = document.activeElement;
+    if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return true;
+    try { if (activeTimer) return true; } catch (e) {}
+    edited = edited.filter(function (el) { return el.isConnected; });
+    return edited.length > 0;
+  }
+  function apply() {
+    try {
+      sessionStorage.setItem("mr-resume",
+        JSON.stringify({ v: currentView, y: window.scrollY, at: Date.now() }));
+    } catch (e) {}
+    location.reload();
+  }
+  function ask() {
+    var c = sw.controller;
+    if (!c) return;
+    var ch = new MessageChannel();
+    ch.port1.onmessage = function (e) {
+      var d = e.data || {};
+      if (d.served) served = d.served;
+      if (!d.changed) return;
+      pending = true;
+      if (!touched && !document.hidden && Date.now() - shownAt < 2500 && !busy()) apply();
+    };
+    try { c.postMessage({ mr: "check", url: location.href, served: served }, [ch.port2]); }
+    catch (e) {}
+  }
+  if (sw.controller) ask();
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      if (pending && !busy()) apply();
+      return;
+    }
+    touched = false;
+    shownAt = Date.now();
+    chk();
+    ask();
+  });
 })();</script>
 </body>
 </html>
