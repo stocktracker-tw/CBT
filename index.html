@@ -1966,6 +1966,23 @@ updateStreakBadge();
 renderers.today();
 measureRest();
 updateTabLens();
+// 跨日：PWA 常常整晚留在記憶體裡，隔天早上切回來頁面不會重載。今日頁的簽到、
+// 今日課程、連續天數都是依 todayKey() 畫的，不重畫的話畫面會停在「昨天已經
+// 簽到」——簽到表單不出現，今天簽不了（實測 23:50 簽完、隔天 08:10 切回來就是
+// 這樣）。切回前景或重新取得焦點時，日期換了就重畫目前的分頁。
+// 有 sheet 開著就先不動（不去重畫它底下的頁面），renderedDay 也不更新，
+// 下一次切回來再試。
+let renderedDay = todayKey();
+function refreshIfNewDay() {
+  const k = todayKey();
+  if (k === renderedDay) return;
+  updateStreakBadge();
+  if (document.querySelector('#modal-root .modal-veil')) return;
+  renderedDay = k;
+  if (renderers[currentView]) renderers[currentView]();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshIfNewDay(); });
+window.addEventListener('focus', refreshIfNewDay);
 // 換版重載前記下的位置（見 swreg 的 apply()）：回到原本那個分頁、捲回原本
 // 的位置——換版看起來只是畫面更新了一下，而不是被踢回首頁。
 // 放 30 分鐘：切走 app 時觸發的重載，iOS 有可能把它凍住、等下次切回來才跑完。
