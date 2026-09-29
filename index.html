@@ -640,12 +640,22 @@ function sanitizeData(d) {
   return out;
 }
 function loadData() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return DEFAULT_DATA();
+    raw = localStorage.getItem(STORE_KEY);
+  } catch (e) {
+    storageOk = false;                 // 真的讀不到儲存空間（隱私模式、被停用）
+    return DEFAULT_DATA();
+  }
+  if (!raw) return DEFAULT_DATA();
+  try {
     return sanitizeData(JSON.parse(raw));
   } catch (e) {
-    storageOk = false;
+    // 內容壞掉，但儲存空間本身是好的——兩件事要分開。以前兩種都走同一個
+    // catch：storageOk 被設成 false（引導完的今日頁會誤報「無法保存資料」），
+    // 而且畫面直接當成新使用者，按下「開始吧」的那次 save() 就把原本那份永久
+    // 蓋掉。現在先把讀不出來的原文另存一份再從頭開始，至少救得回來。
+    try { localStorage.setItem(STORE_KEY + '.corrupt.' + Date.now(), raw); } catch (e2) {}
     return DEFAULT_DATA();
   }
 }
@@ -752,7 +762,13 @@ function attachSheetDrag(box, grab) {
 /* ================= modal ================= */
 let modalGuard = null, lastFocused = null;
 function openModal(html, guard) {
-  closeModal();
+  // 換成新的 sheet 時，舊的「直接」清掉，不播退場動畫。
+  // 退場動畫那條路是「先標 closingModal、260ms 後再清空 #modal-root」——走那條的
+  // 話，260ms 後被清掉的會是「剛畫好的這張新 sheet」。思考紀錄每一步、評估的
+  // 結果頁、睡不著裡的「腦內傾倒／呼吸練習」都是在 sheet 開著時再 openModal，
+  // 實測按「下一步」後第二步只出現約 200ms 就整張消失，一筆思考紀錄都存不了
+  // （#39 加上滑出動畫時引進）。
+  closeModal(true);
   modalGuard = guard || null;
   lastFocused = document.activeElement;
   const root = $('#modal-root');
@@ -830,19 +846,25 @@ function fitModalVV() {
   }
 }
 let closingModal = false;
-function closeModal() {
+let closeModalTimer = 0;
+function closeModal(now) {
   const veil = document.querySelector('.modal-veil');
   const bx = veil && veil.querySelector('.modal-box');
-  if (veil && bx && !closingModal) {          // 先播退場動畫，跑完再真的清掉
+  if (!now && veil && bx && !closingModal) {  // 先播退場動畫，跑完再真的清掉
     closingModal = true;
     veil.classList.remove('shown');
     bx.classList.remove('dragging');
     bx.style.marginBottom = -(bx.offsetHeight + 40) + 'px';
     // 這裡刻意「不」先把旗標放掉：留著 true，260ms 後再進來才會走到真正的清理，
     // 否則會一直重新播退場動畫、永遠關不掉（實測 sheet 不會消失）。
-    setTimeout(closeModal, 260);
+    // 計時器要記下來：這 260ms 內如果有人 openModal，得把它取消，不然它醒來
+    // 清掉的就是新的那張（見 openModal）。
+    clearTimeout(closeModalTimer);
+    closeModalTimer = setTimeout(() => closeModal(true), 260);
     return;
   }
+  clearTimeout(closeModalTimer);
+  closeModalTimer = 0;
   closingModal = false;
   const bx0 = document.querySelector('.modal-box');
   if (bx0) bx0.style.maxHeight = '';
@@ -1682,10 +1704,17 @@ function openFiveMin() {
     '<div class="timer-big" id="fm-time">5:00</div>' +
     '<div class="step-nav"><button class="btn ghost" id="fm-reset">重設</button><button class="btn ghost" id="fm-done">提前做完了</button><button class="btn" id="fm-go">開始</button></div>' +
     '<p class="mut" style="text-align:center;margin-top:8px">提早停下也算成功——開始本身就是勝利。</p>');
-  let left = 300, running = false;
+  // credited：這一輪已經記過成就了。沒有這個旗標時，「提前做完了」每按一次就多記
+  // 一筆——手機上連點兩下就是兩筆，計時跑完自動記過之後再按也會再記一筆（實測
+  // 連點 90ms 從 0 變 2）。記過就把按鈕停用，開始下一輪或按「重設」才打開。
+  let left = 300, running = false, credited = false;
   const timeEl = box.querySelector('#fm-time'), goBtn = box.querySelector('#fm-go');
+  const doneBtn = box.querySelector('#fm-done');
   const draw = () => { timeEl.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); };
   const credit = () => {
+    if (credited) return false;
+    credited = true;
+    doneBtn.disabled = true;
     clearActiveTimer(); running = false;
     const goal = box.querySelector('#fm-goal').value.trim() || '五分鐘啟動';
     D.activities.unshift({ id: uid(), date: todayKey(), text: goal, type: 'win', done: true });
@@ -1693,21 +1722,21 @@ function openFiveMin() {
     timeEl.textContent = '完成！';
     goBtn.textContent = '再來五分鐘';
     left = 300;
+    return true;
   };
-  box.querySelector('#fm-done').addEventListener('click', () => { credit(); toast('做到了就算數——已記入你的成就清單'); });
+  const rearm = () => { credited = false; doneBtn.disabled = false; };
+  doneBtn.addEventListener('click', () => { if (credit()) toast('做到了就算數——已記入你的成就清單'); });
   goBtn.addEventListener('click', () => {
     if (running) { clearActiveTimer(); running = false; goBtn.textContent = '繼續'; return; }
+    if (credited) { rearm(); draw(); }   // 「再來五分鐘」＝新的一輪
     running = true; goBtn.textContent = '暫停';
     clearActiveTimer();
     activeTimer = setInterval(() => {
       left--; draw();
-      if (left <= 0) {
-        credit();
-        toast('五分鐘做到了——已記入你的成就清單');
-      }
+      if (left <= 0 && credit()) toast('五分鐘做到了——已記入你的成就清單');
     }, 1000);
   });
-  box.querySelector('#fm-reset').addEventListener('click', () => { clearActiveTimer(); running = false; left = 300; draw(); goBtn.textContent = '開始'; });
+  box.querySelector('#fm-reset').addEventListener('click', () => { clearActiveTimer(); running = false; left = 300; rearm(); draw(); goBtn.textContent = '開始'; });
 }
 
 /* ================= HISTORY view ================= */
@@ -1937,24 +1966,113 @@ updateStreakBadge();
 renderers.today();
 measureRest();
 updateTabLens();
+// 跨日：PWA 常常整晚留在記憶體裡，隔天早上切回來頁面不會重載。今日頁的簽到、
+// 今日課程、連續天數都是依 todayKey() 畫的，不重畫的話畫面會停在「昨天已經
+// 簽到」——簽到表單不出現，今天簽不了（實測 23:50 簽完、隔天 08:10 切回來就是
+// 這樣）。切回前景或重新取得焦點時，日期換了就重畫目前的分頁。
+// 有 sheet 開著就先不動（不去重畫它底下的頁面），renderedDay 也不更新，
+// 下一次切回來再試。
+let renderedDay = todayKey();
+function refreshIfNewDay() {
+  const k = todayKey();
+  if (k === renderedDay) return;
+  updateStreakBadge();
+  if (document.querySelector('#modal-root .modal-veil')) return;
+  renderedDay = k;
+  if (renderers[currentView]) renderers[currentView]();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshIfNewDay(); });
+window.addEventListener('focus', refreshIfNewDay);
+// 換版重載前記下的位置（見 swreg 的 apply()）：回到原本那個分頁、捲回原本
+// 的位置——換版看起來只是畫面更新了一下，而不是被踢回首頁。
+// 放 30 分鐘：切走 app 時觸發的重載，iOS 有可能把它凍住、等下次切回來才跑完。
+(function () {
+  let r = null;
+  try {
+    r = JSON.parse(sessionStorage.getItem('mr-resume') || 'null');
+    sessionStorage.removeItem('mr-resume');
+  } catch (e) {}
+  if (!r || !(Date.now() - r.at < 30 * 60 * 1000)) return;
+  if (r.v && r.v !== currentView && renderers[r.v]) show(r.v);
+  if (r.y > 0) window.scrollTo(0, r.y);
+})();
 </script>
-<script id="swreg">/* 註冊 service worker。第二次之後開啟就是從快取吃，不必再把
-   161 KB 的 index.html 重抓一次；內容更新靠 sw.js 的背景回填，下一次開啟生效。
+<script id="swreg">/* 註冊 service worker，並在有新版時挑「不會打斷人」的時機換上。
+
    第一次造訪等 load 再註冊，免得註冊＋預快取回頭跟首屏搶頻寬；已經有
-   controller（代表這一頁本來就是快取吐出來的、網路是閒的）就馬上註冊。 */
+   controller（代表這一頁本來就是快取吐出來的、網路是閒的）就馬上註冊。
+
+   換版：頁面一載好就問 SW「我這份是不是舊的？」（sw.js 會比對內容雜湊）。
+   以前新版要等「下一次開啟」才看得到，PWA 一開就是好幾天，實際上等於要把
+   app 滑掉重開兩次。現在分三種情況：
+     1. 剛開（或剛切回前景）2.5 秒內、還沒碰任何東西 → 馬上換。這時畫面上
+        什麼都還沒開始，看起來就只是 app 剛載好。
+     2. 已經在用了 → 記著，等切走 app 的那一刻換；下次切回來就是新版。
+     3. 有 sheet 開著、游標在輸入框、打了字還沒送出、計時練習在跑 → 不換，
+        留給下一個安全的時機。這支 app 沒有草稿自動儲存，打到一半的字只存在
+        畫面上，重載就沒了——這條是硬規則，寧可晚換也不能吃掉使用者寫的東西。
+   換之前記下所在分頁與捲動位置，換完由 init 放回原位。 */
 (function () {
   if (!("serviceWorker" in navigator)) return;
+  var sw = navigator.serviceWorker;
   function chk() {
-    try {
-      navigator.serviceWorker.getRegistration()
-        .then(function (r) { if (r) r.update(); }).catch(function () {});
-    } catch (e) {}
+    try { sw.getRegistration().then(function (r) { if (r) r.update(); }).catch(function () {}); }
+    catch (e) {}
   }
-  function reg() { navigator.serviceWorker.register("sw.js").then(chk).catch(function () {}); }
-  if (navigator.serviceWorker.controller) reg();
+  function reg() { sw.register("sw.js").then(chk).catch(function () {}); }
+  if (sw.controller) reg();
   else addEventListener("load", reg);
-  // PWA 常常一開就好幾天不關，回到前景時主動問一次有沒有新版
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) chk(); });
+
+  var served = null, pending = false, touched = false, shownAt = Date.now();
+  // 使用者動過的輸入欄位。還接在畫面上的就算「可能還沒存」——存檔之後
+  // 各頁都會重畫（innerHTML）或關掉 sheet，舊的欄位就自然脫離了。
+  var edited = [];
+  addEventListener("input", function (e) {
+    if (e.target && edited.indexOf(e.target) < 0) edited.push(e.target);
+  }, true);
+  ["pointerdown", "keydown", "touchstart"].forEach(function (t) {
+    addEventListener(t, function () { touched = true; }, { capture: true, passive: true });
+  });
+  function busy() {
+    if (document.querySelector("#modal-root .modal-veil")) return true;
+    var a = document.activeElement;
+    if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return true;
+    try { if (activeTimer) return true; } catch (e) {}
+    edited = edited.filter(function (el) { return el.isConnected; });
+    return edited.length > 0;
+  }
+  function apply() {
+    try {
+      sessionStorage.setItem("mr-resume",
+        JSON.stringify({ v: currentView, y: window.scrollY, at: Date.now() }));
+    } catch (e) {}
+    location.reload();
+  }
+  function ask() {
+    var c = sw.controller;
+    if (!c) return;
+    var ch = new MessageChannel();
+    ch.port1.onmessage = function (e) {
+      var d = e.data || {};
+      if (d.served) served = d.served;
+      if (!d.changed) return;
+      pending = true;
+      if (!touched && !document.hidden && Date.now() - shownAt < 2500 && !busy()) apply();
+    };
+    try { c.postMessage({ mr: "check", url: location.href, served: served }, [ch.port2]); }
+    catch (e) {}
+  }
+  if (sw.controller) ask();
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      if (pending && !busy()) apply();
+      return;
+    }
+    touched = false;
+    shownAt = Date.now();
+    chk();
+    ask();
+  });
 })();</script>
 </body>
 </html>
